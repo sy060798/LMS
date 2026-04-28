@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", function(){
 
 const matBody = document.getElementById("matBody");
 const search = document.getElementById("search");
@@ -20,6 +20,7 @@ materials = [
 ];
 
 saveData();
+
 }
 
 function saveData(){
@@ -30,20 +31,26 @@ function rp(x){
 return Number(x).toLocaleString("id-ID");
 }
 
-function render(filter=""){
+function render(filter){
 
 matBody.innerHTML = "";
 
-materials
-.filter(x=>x.nama.toLowerCase().includes(filter.toLowerCase()))
-.forEach((x,i)=>{
+let list = materials;
+
+if(filter){
+list = materials.filter(function(x){
+return x.nama.toLowerCase().indexOf(filter.toLowerCase()) > -1;
+});
+}
+
+for(let i=0;i<list.length;i++){
 
 matBody.innerHTML += `
 <tr>
 <td>${i+1}</td>
-<td>${x.nama}</td>
-<td>${x.satuan}</td>
-<td>${rp(x.harga)}</td>
+<td>${list[i].nama}</td>
+<td>${list[i].satuan}</td>
+<td>${rp(list[i].harga)}</td>
 <td>
 <span class="action" onclick="editMaterial(${i})">✏️</span>
 <span class="action" onclick="hapusMaterial(${i})">🗑️</span>
@@ -51,19 +58,19 @@ matBody.innerHTML += `
 </tr>
 `;
 
-});
+}
 
 }
 
 window.addMaterial = function(){
 
-let nama = prompt("Nama Material:");
+let nama = prompt("Nama Material");
 if(!nama) return;
 
-let satuan = prompt("Satuan:");
+let satuan = prompt("Satuan");
 if(!satuan) return;
 
-let harga = prompt("Harga:");
+let harga = prompt("Harga");
 if(harga===null) return;
 
 materials.push({
@@ -81,13 +88,13 @@ window.editMaterial = function(i){
 
 let x = materials[i];
 
-let nama = prompt("Nama Material:", x.nama);
+let nama = prompt("Nama Material", x.nama);
 if(!nama) return;
 
-let satuan = prompt("Satuan:", x.satuan);
+let satuan = prompt("Satuan", x.satuan);
 if(!satuan) return;
 
-let harga = prompt("Harga:", x.harga);
+let harga = prompt("Harga", x.harga);
 if(harga===null) return;
 
 materials[i] = {
@@ -114,10 +121,10 @@ render(search.value);
 
 }
 
-search.addEventListener("input", ()=>{
-render(search.value);
+search.addEventListener("input", function(){
+render(this.value);
 });
 
-render();
+render("");
 
 });

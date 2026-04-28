@@ -1,126 +1,102 @@
 (function () {
 
-/* =========================
-   SERVER URL
-========================= */
 const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   LOCAL STORAGE CORE
+   LOCAL DB
 ========================= */
-window.SYNC = {
-
-  /* GET TICKETS */
-  getTickets: () =>
-    JSON.parse(localStorage.getItem("tickets") || "[]"),
-
-  /* SAVE + PUSH SERVER */
-  saveTickets: (data) => {
-    localStorage.setItem("tickets", JSON.stringify(data));
-    SYNC.pushToServer(data);
-  },
-
-  /* ACTIVE TICKET (ID / SPK FLEXIBLE) */
-  getActiveTicket: () => {
-    let id = localStorage.getItem("activeTicketId");
-    return SYNC.getTickets().find(t => t.id == id || t.spk == id);
-  },
-
-/* =========================
-   PUSH KE SERVER LMS
-========================= */
-  pushToServer: async (data) => {
-    try {
-      await fetch(SERVER_URL + "/api/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          type: "LMS",
-          data: data
-        })
-      });
-    } catch (e) {
-      console.log("SYNC PUSH ERROR:", e);
-    }
-  },
-
-/* =========================
-   PULL DARI SERVER LMS
-========================= */
-  pullFromServer: async () => {
-    try {
-      let res = await fetch(SERVER_URL + "/api/get?type=LMS");
-      let data = await res.json();
-
-      if (Array.isArray(data)) {
-        localStorage.setItem("tickets", JSON.stringify(data));
-      }
-
-      return data;
-    } catch (e) {
-      console.log("SYNC LOAD ERROR:", e);
-      return SYNC.getTickets();
-    }
-  }
-
+const DB = {
+  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
+  saveTickets: (data) => localStorage.setItem("tickets", JSON.stringify(data)),
+  getActiveSpk: () => localStorage.getItem("activeTicketId")
 };
 
 /* =========================
-   MATERIAL SYNC (ONLY QTY > 0)
+   GET ACTIVE TICKET
+========================= */
+function getActiveTicket(){
+  return DB.getTickets().find(t => t.spk == DB.getActiveSpk());
+}
+
+/* =========================
+   SYNC MATERIAL → TICKET
+   (ONLY QTY > 0)
 ========================= */
 window.syncMaterialToTicket = function(materials){
 
-  let tickets = SYNC.getTickets();
-  let id = localStorage.getItem("activeTicketId");
+  let tickets = DB.getTickets();
+  let spk = DB.getActiveSpk();
 
-  let t = tickets.find(x => x.id == id || x.spk == id);
+  let t = tickets.find(x => x.spk == spk);
   if(!t) return;
 
-  t.material = (materials || []).filter(m => Number(m.qty) > 0);
+  t.material = (materials || [])
+    .filter(m => Number(m.qty) > 0);
 
-  SYNC.saveTickets(tickets);
+  DB.saveTickets(tickets);
 };
 
 /* =========================
-   UPDATE SINGLE TICKET
+   SAVE TICKET FULL
 ========================= */
-window.updateTicket = function(ticket){
+async function pushToServer(){
 
-  let tickets = SYNC.getTickets();
+  let tickets = DB.getTickets();
 
-  let i = tickets.findIndex(t =>
-    t.id == ticket.id || t.spk == ticket.spk
-  );
-
-  if(i >= 0){
-    tickets[i] = ticket;
-    SYNC.saveTickets(tickets);
+  try{
+    await fetch(SERVER_URL + "/api/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "LMS",
+        data: tickets
+      })
+    });
+  } catch(e){
+    console.log("SYNC ERROR", e);
   }
-
-};
+}
 
 /* =========================
-   INIT AUTO LOAD
+   LOAD FROM SERVER
 ========================= */
-(async function initSync(){
-  await SYNC.pullFromServer();
-  console.log("🚀 SYNC ENGINE READY (LMS)");
+async function pullFromServer(){
+
+  try{
+    let res = await fetch(SERVER_URL + "/api/get?type=LMS");
+    let data = await res.json();
+
+    if(Array.isArray(data)){
+      DB.saveTickets(data);
+    }
+
+  } catch(e){
+    console.log("LOAD ERROR", e);
+  }
+}
+
+/* =========================
+   AUTO INIT
+========================= */
+(async function(){
+  await pullFromServer();
 })();
 
 /* =========================
-   AUTO SYNC LOOP
+   AUTO SYNC
 ========================= */
-setInterval(() => {
-  SYNC.pullFromServer();
-}, 30000);
+setInterval(pushToServer, 30000);
+
+window.addEventListener("beforeunload", pushToServer);
 
 /* =========================
-   BEFORE CLOSE SAVE
+   GLOBAL API
 ========================= */
-window.addEventListener("beforeunload", function(){
-  SYNC.saveTickets(SYNC.getTickets());
-});
+window.FS = {
+  DB,
+  pushToServer,
+  pullFromServer,
+  syncMaterialToTicket
+};
 
 })();

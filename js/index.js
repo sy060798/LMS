@@ -111,39 +111,67 @@ loadTable(search.value);
 /* =========================
    EXPORT
 ========================= */
+// ================================
+// EXPORT EXCEL PRO BOQ (.xlsx)
+// WAJIB tambah CDN SheetJS di index.html:
+// <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+// ================================
+
 function exportExcel(){
 
 let data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
-if(data.length===0){
+if(data.length === 0){
 alert("Data kosong");
 return;
 }
 
-/* ambil semua nama material unik */
+/* =========================
+   AMBIL SEMUA MATERIAL QTY > 0
+========================= */
 let allMat = [];
 
 data.forEach(t=>{
 (t.material || []).forEach(m=>{
-if(Number(m.qty)>0 && !allMat.includes(m.nama)){
+if(Number(m.qty)>0){
+if(!allMat.includes(m.nama)){
 allMat.push(m.nama);
+}
 }
 });
 });
 
-/* header */
-let csv = [];
+/* =========================
+   BUAT SHEET DATA
+========================= */
+let ws_data = [];
 
-let header = [
-"No","Customer","Project","SPK","Tanggal","City","Status"
+/* HEADER BARIS 1 */
+let row1 = [
+"DATA TICKET","","","","","","",
+"MATERIAL","","","","","","","","","","",
+"TOTAL"
 ];
 
-header = header.concat(allMat);
-header.push("Total Harga");
+ws_data.push(row1);
 
-csv.push(header);
+/* HEADER BARIS 2 */
+let row2 = [
+"No",
+"Customer",
+"Project",
+"SPK",
+"Tanggal",
+"City",
+"Status"
+];
 
-/* isi */
+row2 = row2.concat(allMat);
+row2.push("Grand Total");
+
+ws_data.push(row2);
+
+/* DATA */
 data.forEach((t,i)=>{
 
 let row = [
@@ -160,10 +188,10 @@ let grand = 0;
 
 allMat.forEach(nama=>{
 
-let found = (t.material || []).find(x => x.nama === nama);
+let found = (t.material || []).find(x=>x.nama===nama);
 
 if(found){
-row.push(found.qty || 0);
+row.push(Number(found.qty||0));
 grand += Number(found.qty||0) * Number(found.harga||0);
 }else{
 row.push("");
@@ -173,21 +201,123 @@ row.push("");
 
 row.push(grand);
 
-csv.push(row);
+ws_data.push(row);
 
 });
 
-/* download */
-let content = csv.map(r=>r.join(",")).join("\n");
+/* =========================
+   CREATE WORKBOOK
+========================= */
+let wb = XLSX.utils.book_new();
+let ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-let blob = new Blob([content],{
-type:"text/csv;charset=utf-8;"
-});
+/* =========================
+   MERGE CELL
+========================= */
+ws["!merges"] = [
+{ s:{r:0,c:0}, e:{r:0,c:6} }, // DATA TICKET
+{ s:{r:0,c:7}, e:{r:0,c:6+allMat.length} }, // MATERIAL
+{ s:{r:0,c:7+allMat.length}, e:{r:0,c:7+allMat.length} }
+];
 
-let link=document.createElement("a");
-link.href=URL.createObjectURL(blob);
-link.download="Laporan_BOQ.csv";
-link.click();
+/* =========================
+   AUTO WIDTH
+========================= */
+let cols = [];
+
+for(let i=0;i<7+allMat.length+1;i++){
+cols.push({wch:22});
+}
+
+ws["!cols"] = cols;
+
+/* =========================
+   STYLE
+========================= */
+function setStyle(cell,fill,bold){
+
+if(!ws[cell]) return;
+
+ws[cell].s = {
+font:{
+bold:bold || false,
+color:{rgb:"FFFFFF"}
+},
+fill:{
+fgColor:{rgb:fill}
+},
+alignment:{
+horizontal:"center",
+vertical:"center",
+wrapText:true
+},
+border:{
+top:{style:"thin",color:{rgb:"000000"}},
+bottom:{style:"thin",color:{rgb:"000000"}},
+left:{style:"thin",color:{rgb:"000000"}},
+right:{style:"thin",color:{rgb:"000000"}}
+}
+};
+
+}
+
+/* BARIS HEADER BIRU */
+for(let c=0;c<7+allMat.length+1;c++){
+
+let col = XLSX.utils.encode_col(c);
+
+setStyle(col+"1","1565C0",true);
+setStyle(col+"2","1976D2",true);
+
+}
+
+/* DATA BORDER */
+for(let r=3;r<=ws_data.length;r++){
+
+for(let c=0;c<7+allMat.length+1;c++){
+
+let cell = XLSX.utils.encode_col(c)+r;
+
+if(ws[cell]){
+
+ws[cell].s = {
+border:{
+top:{style:"thin",color:{rgb:"CCCCCC"}},
+bottom:{style:"thin",color:{rgb:"CCCCCC"}},
+left:{style:"thin",color:{rgb:"CCCCCC"}},
+right:{style:"thin",color:{rgb:"CCCCCC"}}
+},
+alignment:{
+vertical:"center",
+horizontal:c>=7?"center":"left"
+}
+};
+
+}
+
+}
+
+}
+
+/* FORMAT RUPIAH GRAND TOTAL */
+for(let r=3;r<=ws_data.length;r++){
+
+let lastCol = XLSX.utils.encode_col(7+allMat.length);
+let cell = lastCol + r;
+
+if(ws[cell]){
+ws[cell].z = '#,##0';
+}
+
+}
+
+/* =========================
+   APPEND
+========================= */
+XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+
+/* DOWNLOAD */
+XLSX.writeFile(wb,"Laporan_BOQ_Professional.xlsx");
 
 }
 

@@ -1,3 +1,7 @@
+/* =========================================
+   SERVER.JS - FS TICKET SYSTEM (FIXED)
+========================================= */
+
 if (typeof SERVER_URL === "undefined") {
   var SERVER_URL = "https://tracking-server-production-6a12.up.railway.app";
 }
@@ -19,13 +23,13 @@ function showLoading(txt = "Loading...") {
   box.id = "miniLoading";
 
   box.innerHTML = `
-  <div class="loading-box">
-    <div class="spin"></div>
-    <div class="load-text">${txt}</div>
-    <div class="bar-wrap">
-      <div class="bar-run"></div>
+    <div class="loading-box">
+      <div class="spin"></div>
+      <div class="load-text">${txt}</div>
+      <div class="bar-wrap">
+        <div class="bar-run"></div>
+      </div>
     </div>
-  </div>
   `;
 
   document.body.appendChild(box);
@@ -48,16 +52,15 @@ async function cekServer(){
 }
 
 /* ===============================
-   MASTER SYNC (ANTI BEDA CHROME)
+   LOAD ALL DATA (TICKETS + MATERIAL)
 =============================== */
 async function loadAllData(){
-
   try{
 
     showLoading("Sync Data...");
 
-    let tickets = await fetch(SERVER_URL+"/tickets").then(r=>r.json());
-    let material = await fetch(SERVER_URL+"/material").then(r=>r.json());
+    let tickets = await fetch(SERVER_URL + "/tickets").then(r=>r.json()).catch(()=>[]);
+    let material = await fetch(SERVER_URL + "/material").then(r=>r.json()).catch(()=>[]);
 
     if(Array.isArray(tickets)){
       localStorage.setItem("tickets", JSON.stringify(tickets));
@@ -83,7 +86,8 @@ function getActiveTicketId(){
 }
 
 /* ===============================
-   🔥 CORE: SYNC MATERIAL → TICKET
+   🔥 SYNC MATERIAL → ACTIVE TICKET
+   (ONLY QTY > 0)
 =============================== */
 function syncMaterialToActiveTicket(){
 
@@ -97,13 +101,14 @@ function syncMaterialToActiveTicket(){
 
   let materials = JSON.parse(localStorage.getItem("materialMaster") || "[]");
 
-  ticket.material = materials;
+  // ONLY MATERIAL WITH QTY > 0
+  ticket.material = materials.filter(m => Number(m.qty) > 0);
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
 }
 
 /* ===============================
-   SAVE TICKETS TO SERVER
+   UPLOAD TICKETS
 =============================== */
 async function uploadTickets(){
 
@@ -111,7 +116,7 @@ async function uploadTickets(){
 
   try{
 
-    await fetch(SERVER_URL+"/saveTickets",{
+    await fetch(SERVER_URL + "/saveTickets",{
       method:"POST",
       headers:{
         "Content-Type":"application/json"
@@ -125,7 +130,7 @@ async function uploadTickets(){
 }
 
 /* ===============================
-   SAVE MATERIAL PER TICKET
+   UPLOAD MATERIAL PER TICKET
 =============================== */
 async function uploadMaterial(){
 
@@ -142,11 +147,11 @@ async function uploadMaterial(){
 
   try{
 
-    await fetch(SERVER_URL+"/saveMaterial",{
+    await fetch(SERVER_URL + "/saveMaterial",{
       method:"POST",
       headers:{
         "Content-Type":"application/json",
-        "Authorization":"Bearer "+auth.token
+        "Authorization":"Bearer " + auth.token
       },
       body:JSON.stringify({
         ticketId: activeId,
@@ -168,29 +173,32 @@ async function uploadMaterial(){
 })();
 
 /* ===============================
-   AUTO SYNC REALTIME
+   AUTO SYNC (BACKGROUND)
 =============================== */
 setInterval(() => {
-
   uploadTickets();
   uploadMaterial();
-
 }, 30000);
 
 /* ===============================
-   IMPORTANT: AUTO SYNC TRIGGER HOOK
-   (INI YANG BIKIN PER TICKET AMAN)
+   AUTO SAVE BEFORE CLOSE
+=============================== */
+window.addEventListener("beforeunload", function(){
+  uploadTickets();
+  uploadMaterial();
+});
+
+/* ===============================
+   GLOBAL HOOK
 =============================== */
 window.syncMaterialToActiveTicket = syncMaterialToActiveTicket;
 
-
-/* =========================
-   SAVE GLOBAL (INDEX BUTTON)
-========================= */
-function saveNow(){
-  if(typeof uploadTickets === "function") uploadTickets();
-  if(typeof uploadMaterial === "function") uploadMaterial();
+/* ===============================
+   SAVE BUTTON GLOBAL
+=============================== */
+window.saveNow = function(){
+  syncMaterialToActiveTicket();
+  uploadTickets();
+  uploadMaterial();
   alert("Data berhasil sync ke server");
-}
-
-window.saveNow = saveNow;
+};

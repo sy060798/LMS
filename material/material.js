@@ -3,9 +3,12 @@ document.addEventListener("DOMContentLoaded", function(){
 const matBody = document.getElementById("matBody");
 const search = document.getElementById("search");
 
-let materials = JSON.parse(localStorage.getItem("materialMaster"));
+/* =========================
+   LOAD MATERIAL (SAFE)
+========================= */
+let materials = JSON.parse(localStorage.getItem("materialMaster") || "null");
 
-if(!materials){
+if(!materials || !Array.isArray(materials)){
 
 materials = [
 
@@ -23,14 +26,24 @@ saveData();
 
 }
 
+/* =========================
+   SAVE DATA (SAFE)
+========================= */
 function saveData(){
+if(!Array.isArray(materials)) return;
 localStorage.setItem("materialMaster", JSON.stringify(materials));
 }
 
+/* =========================
+   FORMAT RUPIAH
+========================= */
 function rp(x){
 return Number(x).toLocaleString("id-ID");
 }
 
+/* =========================
+   RENDER TABLE
+========================= */
 function render(filter){
 
 matBody.innerHTML = "";
@@ -76,15 +89,23 @@ onchange="ubahQty(${i},this.value)">
 
 }
 
+/* =========================
+   UBAH QTY (SAFE)
+========================= */
 window.ubahQty = function(i,val){
+
+if(!materials[i]) return;
 
 materials[i].qty = Number(val);
 
 saveData();
 render(search.value);
 
-}
+};
 
+/* =========================
+   TAMBAH MATERIAL
+========================= */
 window.addMaterial = function(){
 
 let nama = prompt("Nama Material");
@@ -106,11 +127,15 @@ qty:0
 saveData();
 render(search.value);
 
-}
+};
 
+/* =========================
+   EDIT MATERIAL
+========================= */
 window.editMaterial = function(i){
 
 let x = materials[i];
+if(!x) return;
 
 let nama = prompt("Nama Material", x.nama);
 if(!nama) return;
@@ -128,9 +153,14 @@ materials[i].harga = Number(harga);
 saveData();
 render(search.value);
 
-}
+};
 
+/* =========================
+   HAPUS MATERIAL
+========================= */
 window.hapusMaterial = function(i){
+
+if(!materials[i]) return;
 
 if(confirm("Hapus material ini?")){
 
@@ -141,12 +171,25 @@ render(search.value);
 
 }
 
-}
+};
 
+/* =========================
+   SEARCH
+========================= */
 search.addEventListener("input", function(){
 render(this.value);
 });
 
+/* =========================
+   AUTO SAVE (ANTI HILANG)
+========================= */
+window.addEventListener("beforeunload", function(){
+saveData();
+});
+
+/* =========================
+   INIT
+========================= */
 render("");
 
 });

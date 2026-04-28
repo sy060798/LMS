@@ -1,19 +1,29 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-let data = JSON.parse(localStorage.getItem("tickets") || "[]");
+let data = [];
 
+/* =========================
+   ELEMENT
+========================= */
 const body = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   SAFE REFRESH DATA
+   GET LOCAL
 ========================= */
-function refreshData(){
-  data = JSON.parse(localStorage.getItem("tickets") || "[]");
+function getLocal(){
+  return JSON.parse(localStorage.getItem("tickets") || "[]");
 }
 
 /* =========================
-   LOAD CARD
+   SET DATA GLOBAL
+========================= */
+function refreshData(){
+  data = getLocal();
+}
+
+/* =========================
+   LOAD SUMMARY
 ========================= */
 function loadSummary(){
 
@@ -33,7 +43,7 @@ data.filter(x => x.material && x.material.length > 0).length;
 }
 
 /* =========================
-   TABLE
+   RENDER TABLE
 ========================= */
 function loadTable(filter=""){
 
@@ -43,7 +53,11 @@ let rows = data.filter(x =>
 (x.project || "").toLowerCase().includes(filter.toLowerCase())
 );
 
-body.innerHTML = rows.slice(-50).reverse().map((x,i)=>`
+body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
+
+let index = data.indexOf(x);
+
+return `
 <tr>
 <td>${i+1}</td>
 <td>${x.customer || ""}</td>
@@ -54,21 +68,22 @@ body.innerHTML = rows.slice(-50).reverse().map((x,i)=>`
 <td><span class="status">${x.status || ""}</span></td>
 <td>
 <div class="aksi">
-<button class="icon-btn box-btn" onclick="openMaterial(${data.indexOf(x)})">📦</button>
-<button class="icon-btn edit-btn" onclick="editTicket(${data.indexOf(x)})">✏️</button>
-<button class="icon-btn del-btn" onclick="hapusTicket(${data.indexOf(x)})">🗑️</button>
+<button class="icon-btn box-btn" onclick="openMaterial(${index})">📦</button>
+<button class="icon-btn edit-btn" onclick="editTicket(${index})">✏️</button>
+<button class="icon-btn del-btn" onclick="hapusTicket(${index})">🗑️</button>
 </div>
 </td>
 </tr>
-`).join("");
+`;
+
+}).join("");
 
 }
 
 /* =========================
-   SEARCH SAFE
+   SEARCH
 ========================= */
 if(search){
-search.placeholder = "Cari Nama Project...";
 search.addEventListener("input", function(){
 loadTable(this.value);
 });
@@ -78,16 +93,26 @@ loadTable(this.value);
    OPEN MATERIAL
 ========================= */
 window.openMaterial = function(i){
-  localStorage.setItem("activeTicketId", data[i].id || i);
-  location.href = "material/material.html?id=" + i;
-}
+
+let tickets = getLocal();
+let t = tickets[i];
+
+if(!t) return;
+
+localStorage.setItem("activeTicketId", t.id);
+
+window.location.href = "material/material.html";
+
+};
 
 /* =========================
-   EDIT SAFE
+   EDIT
 ========================= */
 window.editTicket = function(i){
 
-let x = data[i];
+let tickets = getLocal();
+let x = tickets[i];
+
 if(!x) return;
 
 x.customer = prompt("Customer", x.customer) || x.customer;
@@ -96,156 +121,42 @@ x.spk      = prompt("SPK", x.spk) || x.spk;
 x.city     = prompt("City", x.city) || x.city;
 x.status   = prompt("Status", x.status) || x.status;
 
-localStorage.setItem("tickets", JSON.stringify(data));
+localStorage.setItem("tickets", JSON.stringify(tickets));
 
 loadSummary();
 loadTable(search.value);
 
-}
+};
 
 /* =========================
-   DELETE SAFE
+   DELETE
 ========================= */
 window.hapusTicket = function(i){
 
 if(confirm("Hapus ticket ini?")){
 
-data.splice(i,1);
+let tickets = getLocal();
+tickets.splice(i,1);
 
-localStorage.setItem("tickets", JSON.stringify(data));
+localStorage.setItem("tickets", JSON.stringify(tickets));
 
 loadSummary();
 loadTable(search.value);
 
 }
 
-}
-
-/* =========================
-   EXPORT (FIXED STABLE)
-========================= */
-window.exportExcel = function(){
-
-let data = JSON.parse(localStorage.getItem("tickets") || "[]");
-
-if(!data.length){
-  alert("Data kosong");
-  return;
-}
-
-/* =========================
-   MATERIAL UNIQUE (qty > 0 only)
-========================= */
-let matMap = new Map();
-
-data.forEach(t => {
-  (t.material || []).forEach(m => {
-    if(Number(m.qty) > 0){
-      matMap.set(m.nama, m.nama);
-    }
-  });
-});
-
-let allMat = Array.from(matMap.values());
-
-/* =========================
-   SHEET DATA
-========================= */
-let ws_data = [];
-
-ws_data.push([
-"DATA TICKET","","","","","","","MATERIAL","","","","","","","TOTAL"
-]);
-
-let row2 = [
-"No","Customer","Project","SPK","Tanggal","City","Status"
-];
-
-row2 = row2.concat(allMat);
-row2.push("Grand Total");
-
-ws_data.push(row2);
-
-/* =========================
-   ROW DATA
-========================= */
-data.forEach((t,i)=>{
-
-let row = [
-i+1,
-t.customer || "",
-t.project || "",
-t.spk || "",
-t.tanggal || "",
-t.city || "",
-t.status || ""
-];
-
-let grand = 0;
-
-allMat.forEach(matName=>{
-
-let found = (t.material || []).find(m =>
-  m.nama === matName
-);
-
-if(found && Number(found.qty) > 0){
-  row.push(Number(found.qty));
-  grand += Number(found.qty) * Number(found.harga || 0);
-}else{
-  row.push("");
-}
-
-});
-
-row.push(grand);
-ws_data.push(row);
-
-});
-
-/* =========================
-   EXPORT
-========================= */
-let wb = XLSX.utils.book_new();
-let ws = XLSX.utils.aoa_to_sheet(ws_data);
-
-ws["!cols"] = Array(7 + allMat.length + 1).fill({wch:18});
-
-XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-XLSX.writeFile(wb, "BOQ_TICKET.xlsx");
-
 };
 
 /* =========================
-   SAVE SERVER SAFE
+   AUTO SYNC EVENT (IMPORTANT)
 ========================= */
-window.saveNow = async function(){
-
-try{
-
-if(typeof showLoading === "function") showLoading("Saving...");
-
-if(typeof uploadTickets === "function") await uploadTickets();
-if(typeof uploadMaterial === "function") await uploadMaterial();
-
-if(typeof hideLoading === "function") hideLoading();
-
-alert("Data berhasil disimpan ke server");
-
-}catch(e){
-
-if(typeof hideLoading === "function") hideLoading();
-
-console.log(e);
-
-alert("Gagal sync ke server");
-
-}
-
-};
+window.addEventListener("ticketsUpdated", function () {
+loadSummary();
+loadTable(search.value);
+});
 
 /* =========================
-   INIT
+   INIT LOAD
 ========================= */
 loadSummary();
 loadTable();

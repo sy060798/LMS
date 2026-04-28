@@ -1,15 +1,9 @@
-// =========================================
-// server.js
-// FS Ticket DB Sync Server + Loading FIX
-// + PER TICKET MATERIAL SAVE
-// =========================================
-
 if (typeof SERVER_URL === "undefined") {
   var SERVER_URL = "https://tracking-server-production-6a12.up.railway.app";
 }
 
 /* ===============================
-   AUTH (LOGIN SIMPLE)
+   AUTH
 =============================== */
 function getAuth(){
 return JSON.parse(localStorage.getItem("auth") || "null");
@@ -20,31 +14,31 @@ return JSON.parse(localStorage.getItem("auth") || "null");
 =============================== */
 function showLoading(txt = "Loading...") {
 
-  hideLoading();
+hideLoading();
 
-  let box = document.createElement("div");
-  box.id = "miniLoading";
+let box = document.createElement("div");
+box.id = "miniLoading";
 
-  box.innerHTML = `
-    <div class="loading-box">
-      <div class="spin"></div>
-      <div class="load-text">${txt}</div>
-      <div class="bar-wrap">
-        <div class="bar-run"></div>
-      </div>
-    </div>
-  `;
+box.innerHTML = `
+<div class="loading-box">
+<div class="spin"></div>
+<div class="load-text">${txt}</div>
+<div class="bar-wrap">
+<div class="bar-run"></div>
+</div>
+</div>
+`;
 
-  document.body.appendChild(box);
+document.body.appendChild(box);
 }
 
-function hideLoading() {
-  let x = document.getElementById("miniLoading");
-  if (x) x.remove();
+function hideLoading(){
+let x = document.getElementById("miniLoading");
+if(x) x.remove();
 }
 
 /* ===============================
-   CSS AUTO
+   CSS LOADING
 =============================== */
 (function(){
 
@@ -79,7 +73,7 @@ margin:auto;
 border:4px solid #ddd;
 border-top:4px solid #1565c0;
 border-radius:50%;
-animation:spin 0.8s linear infinite;
+animation:spin .8s linear infinite;
 }
 
 .load-text{
@@ -116,26 +110,29 @@ document.head.appendChild(style);
 =============================== */
 async function cekServer(){
 try{
-const res = await fetch(SERVER_URL+"/");
-const txt = await res.text();
-console.log("SERVER OK:",txt);
+let res = await fetch(SERVER_URL + "/");
+console.log("SERVER OK");
 }catch(e){
 console.log("SERVER OFFLINE");
 }
 }
 
 /* ===============================
-   TICKETS SYNC
+   TICKETS SYNC (FULL MASTER)
 =============================== */
 async function uploadTickets(){
+
 let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 
 try{
-showLoading("Upload Ticket");
+
+showLoading("Upload Tickets");
 
 await fetch(SERVER_URL+"/saveTickets",{
 method:"POST",
-headers:{"Content-Type":"application/json"},
+headers:{
+"Content-Type":"application/json"
+},
 body:JSON.stringify({tickets})
 });
 
@@ -145,17 +142,20 @@ hideLoading();
 hideLoading();
 console.log(e);
 }
+
 }
 
 async function downloadTickets(){
+
 try{
-showLoading("Sync Ticket");
+
+showLoading("Download Tickets");
 
 let res = await fetch(SERVER_URL+"/tickets");
 let data = await res.json();
 
 if(Array.isArray(data)){
-localStorage.setItem("tickets",JSON.stringify(data));
+localStorage.setItem("tickets", JSON.stringify(data));
 }
 
 hideLoading();
@@ -164,19 +164,18 @@ hideLoading();
 hideLoading();
 console.log(e);
 }
+
 }
 
 /* ===============================
-   MATERIAL PER TICKET SYSTEM
+   ACTIVE TICKET
 =============================== */
-
-// AMBIL ACTIVE TICKET
 function getActiveTicketId(){
 return localStorage.getItem("activeTicketId");
 }
 
 /* ===============================
-   SAVE MATERIAL KE TICKET AKTIF
+   SAVE MATERIAL PER TICKET
 =============================== */
 function saveMaterialToTicket(materials){
 
@@ -184,33 +183,26 @@ let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 
 let id = getActiveTicketId();
 
-if(!id){
-console.log("Tidak ada ticket aktif");
-return;
-}
+if(!id) return;
 
-let idx = tickets.findIndex(t => t.id == id);
+let t = tickets.find(x => x.id == id);
 
-if(idx === -1){
-console.log("Ticket tidak ditemukan");
-return;
-}
+if(!t) return;
 
-// SIMPAN MATERIAL KE TICKET TERSEBUT
-tickets[idx].material = materials;
+t.material = materials;
 
 localStorage.setItem("tickets", JSON.stringify(tickets));
 }
 
 /* ===============================
-   UPLOAD MATERIAL (LOGIN + PER TICKET)
+   UPLOAD MATERIAL PER TICKET (LOGIN SAFE)
 =============================== */
 async function uploadMaterial(){
 
 const auth = getAuth();
 
 if(!auth || !auth.token){
-alert("Anda belum login!");
+console.log("Belum login");
 return;
 }
 
@@ -220,7 +212,7 @@ let id = getActiveTicketId();
 let ticket = tickets.find(t => t.id == id);
 
 if(!ticket){
-alert("Ticket tidak aktif!");
+console.log("Ticket tidak ada");
 return;
 }
 
@@ -250,20 +242,20 @@ console.log(e);
 }
 
 /* ===============================
-   DOWNLOAD MATERIAL (PER TICKET)
+   DOWNLOAD MATERIAL
 =============================== */
 async function downloadMaterial(){
 
 try{
 
-showLoading("Sync Material");
+showLoading("Download Material");
 
 let res = await fetch(SERVER_URL+"/material");
 let data = await res.json();
 
-// OPTIONAL: kalau server return per ticket
+/* OPTIONAL SERVER FORMAT */
 if(Array.isArray(data)){
-localStorage.setItem("materialMaster",JSON.stringify(data));
+localStorage.setItem("materialMaster", JSON.stringify(data));
 }
 
 hideLoading();
@@ -276,7 +268,7 @@ console.log(e);
 }
 
 /* ===============================
-   AUTO START
+   AUTO START SYNC
 =============================== */
 (async function(){
 await cekServer();
@@ -285,9 +277,11 @@ await downloadMaterial();
 })();
 
 /* ===============================
-   AUTO SYNC
+   AUTO SYNC REALTIME
 =============================== */
 setInterval(function(){
+
 uploadTickets();
 uploadMaterial();
-},60000);
+
+},30000); // 30 detik lebih aman

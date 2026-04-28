@@ -16,14 +16,14 @@ function getLocal(){
 }
 
 /* =========================
-   SET DATA GLOBAL
+   REFRESH DATA
 ========================= */
 function refreshData(){
   data = getLocal();
 }
 
 /* =========================
-   LOAD SUMMARY
+   SUMMARY
 ========================= */
 function loadSummary(){
 
@@ -43,7 +43,7 @@ data.filter(x => x.material && x.material.length > 0).length;
 }
 
 /* =========================
-   RENDER TABLE
+   TABLE RENDER (SAFE ID BASED)
 ========================= */
 function loadTable(filter=""){
 
@@ -55,8 +55,6 @@ let rows = data.filter(x =>
 
 body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
 
-let index = data.indexOf(x);
-
 return `
 <tr>
 <td>${i+1}</td>
@@ -66,11 +64,19 @@ return `
 <td>${x.tanggal || ""}</td>
 <td>${x.city || ""}</td>
 <td><span class="status">${x.status || ""}</span></td>
+
 <td>
 <div class="aksi">
-<button class="icon-btn box-btn" onclick="openMaterial(${index})">📦</button>
-<button class="icon-btn edit-btn" onclick="editTicket(${index})">✏️</button>
-<button class="icon-btn del-btn" onclick="hapusTicket(${index})">🗑️</button>
+
+<button class="icon-btn box-btn"
+onclick="openMaterialById('${x.id}')">📦</button>
+
+<button class="icon-btn edit-btn"
+onclick="editTicketById('${x.id}')">✏️</button>
+
+<button class="icon-btn del-btn"
+onclick="hapusTicketById('${x.id}')">🗑️</button>
+
 </div>
 </td>
 </tr>
@@ -90,12 +96,19 @@ loadTable(this.value);
 }
 
 /* =========================
+   FIND BY ID (IMPORTANT FIX)
+========================= */
+function findIndexById(id){
+  return data.findIndex(x => x.id === id);
+}
+
+/* =========================
    OPEN MATERIAL
 ========================= */
-window.openMaterial = function(i){
+window.openMaterialById = function(id){
 
 let tickets = getLocal();
-let t = tickets[i];
+let t = tickets.find(x => x.id == id);
 
 if(!t) return;
 
@@ -108,12 +121,14 @@ window.location.href = "material/material.html";
 /* =========================
    EDIT
 ========================= */
-window.editTicket = function(i){
+window.editTicketById = function(id){
 
 let tickets = getLocal();
-let x = tickets[i];
+let idx = findIndexById(id);
 
-if(!x) return;
+if(idx === -1) return;
+
+let x = tickets[idx];
 
 x.customer = prompt("Customer", x.customer) || x.customer;
 x.project  = prompt("Project", x.project) || x.project;
@@ -131,24 +146,26 @@ loadTable(search.value);
 /* =========================
    DELETE
 ========================= */
-window.hapusTicket = function(i){
+window.hapusTicketById = function(id){
 
-if(confirm("Hapus ticket ini?")){
+if(!confirm("Hapus ticket ini?")) return;
 
 let tickets = getLocal();
-tickets.splice(i,1);
+let idx = findIndexById(id);
+
+if(idx === -1) return;
+
+tickets.splice(idx,1);
 
 localStorage.setItem("tickets", JSON.stringify(tickets));
 
 loadSummary();
 loadTable(search.value);
 
-}
-
 };
 
 /* =========================
-   AUTO SYNC EVENT (IMPORTANT)
+   SYNC UPDATE EVENT
 ========================= */
 window.addEventListener("ticketsUpdated", function () {
 loadSummary();
@@ -156,7 +173,7 @@ loadTable(search.value);
 });
 
 /* =========================
-   INIT LOAD
+   INIT
 ========================= */
 loadSummary();
 loadTable();

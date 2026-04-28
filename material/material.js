@@ -1,12 +1,65 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-const matBody = document.getElementById("matBody");
-const search = document.getElementById("search");
-
-if(!matBody) return;
+const SERVER_URL = window.SERVER_URL || "";
 
 /* =========================
-   MASTER MATERIAL (FIX DATA)
+   ELEMENT POPUP
+========================= */
+let popup = document.createElement("div");
+popup.id = "materialPopup";
+popup.style.cssText = `
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(0,0,0,0.6);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:9999;
+`;
+
+popup.innerHTML = `
+<div style="
+background:#fff;
+width:90%;
+max-width:1000px;
+max-height:90vh;
+overflow:auto;
+border-radius:12px;
+padding:15px;
+box-shadow:0 10px 30px rgba(0,0,0,.3)
+">
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+<h3>📦 Material List</h3>
+<button onclick="closeMaterialPopup()" style="background:red;color:#fff;border:none;padding:8px 12px;border-radius:6px">Tutup</button>
+</div>
+
+<input id="search" placeholder="Cari material..." style="width:100%;padding:10px;margin-bottom:10px">
+
+<table style="width:100%;border-collapse:collapse;font-size:13px">
+<thead>
+<tr>
+<th>No</th>
+<th>Nama</th>
+<th>Satuan</th>
+<th>Harga</th>
+<th>Qty</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody id="matBody"></tbody>
+</table>
+
+</div>
+`;
+
+document.body.appendChild(popup);
+
+/* =========================
+   MASTER DATA
 ========================= */
 const MASTER_MATERIAL = [
   { nama: "Kabel Udara ADSS Span 100 12 Core", satuan: "Meter", harga: 10000 },
@@ -18,185 +71,140 @@ const MASTER_MATERIAL = [
   { nama: "Join Closure Dome 48 Core + Label ID", satuan: "Set", harga: 1250000 },
   { nama: "Join Closure Dome 96 Core", satuan: "Set", harga: 2500000 },
 
-  { nama: "Inlina Closure 12 Core", satuan: "Unit", harga: 1000000 },
-  { nama: "Inline Closure 24 Core", satuan: "Unit", harga: 1000000 },
-  { nama: "Inline Closure 96 Core", satuan: "Unit", harga: 2500000 },
-
-  { nama: "Outdoor DPFO Kap 16 Core + PLC + Label ID", satuan: "Set", harga: 1000000 },
-  { nama: "Outdoor DPFO Kap 24 Core", satuan: "Unit", harga: 1250000 },
-  { nama: "Outdoor DPFO Kap 32 Core", satuan: "Unit", harga: 1500000 },
-
   { nama: "Splitter 1:2", satuan: "Unit", harga: 350000 },
   { nama: "Splitter 1:4", satuan: "Unit", harga: 450000 },
   { nama: "Splitter 1:8", satuan: "Unit", harga: 600000 },
   { nama: "Splitter 1:16", satuan: "Unit", harga: 800000 },
 
-  { nama: "Fixing Slack", satuan: "Set", harga: 250000 },
-  { nama: "Flexible Pipe", satuan: "Meter", harga: 2000 },
-
-  { nama: "Tiang 7 Meter", satuan: "Batang", harga: 1550000 },
-  { nama: "Tiang 9 Meter", satuan: "Batang", harga: 1750000 },
-
   { nama: "Drop Wire Furukawa", satuan: "Meter", harga: 5000 },
   { nama: "Kabel LAN", satuan: "Unit", harga: 5000 },
-  { nama: "Lakban", satuan: "Pcs", harga: 10000 },
-
-  { nama: "Jasa Aktivasi", satuan: "WO", harga: 250000 },
-  { nama: "Penarikan FO 2 Core", satuan: "Meter", harga: 3500 },
-  { nama: "Penarikan FO 12 Core", satuan: "Meter", harga: 4000 },
-  { nama: "Penarikan FO 24 Core", satuan: "Meter", harga: 4500 },
-  { nama: "Penarikan FO 48 Core", satuan: "Meter", harga: 4500 },
-  { nama: "Penarikan FO 96 Core", satuan: "Meter", harga: 5000 },
-
-  { nama: "Splicing + OTDR", satuan: "Core", harga: 50000 },
-  { nama: "Terminasi di pelanggan", satuan: "Lot", harga: 150000 },
-  { nama: "Perapihan galian", satuan: "Lot", harga: 250000 },
-
-  { nama: "Transportasi", satuan: "WO/Client", harga: 250000 }
+  { nama: "Lakban", satuan: "Pcs", harga: 10000 }
 ];
 
 /* =========================
-   LOAD TICKET
+   DB LOCAL
 ========================= */
-let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
-let activeId = localStorage.getItem("activeTicketId");
-
-let ticket = tickets.find(t => t.id == activeId);
-
-/* =========================
-   MATERIAL PER TICKET (CLONE MASTER)
-========================= */
-let materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
-
-/* =========================
-   LOAD EXISTING QTY IF ANY
-========================= */
-if(ticket?.material?.length){
-  materials = materials.map(m => {
-    let old = ticket.material.find(x => x.nama === m.nama);
-    return {
-      ...m,
-      qty: old ? old.qty : 0,
-      harga: old ? old.harga : m.harga
-    };
-  });
-}
-
-/* =========================
-   COMMIT (SAVE KE TICKET)
-========================= */
-function commit(){
-
-  if(!ticket) return;
-
-  ticket.material = materials
-    .filter(m => Number(m.qty) > 0)
-    .map(m => ({
-      nama: m.nama,
-      satuan: m.satuan,
-      harga: Number(m.harga),
-      qty: Number(m.qty || 0)
-    }));
-
-  localStorage.setItem("tickets", JSON.stringify(tickets));
-}
-
-/* =========================
-   FORMAT RUPIAH
-========================= */
-function rp(x){
-  return Number(x || 0).toLocaleString("id-ID");
-}
-
-/* =========================
-   RENDER TABLE
-========================= */
-function render(filter=""){
-
-  matBody.innerHTML = "";
-
-  let list = materials
-    .map((m,i)=>({...m,_i:i}))
-    .filter(x =>
-      !filter ||
-      (x.nama || "").toLowerCase().includes(filter.toLowerCase())
-    );
-
-  list.forEach((item,i)=>{
-
-    let total = Number(item.harga) * Number(item.qty || 0);
-
-    matBody.innerHTML += `
-      <tr>
-        <td>${i+1}</td>
-        <td>${item.nama}</td>
-        <td>${item.satuan}</td>
-
-        <td>
-          <input type="number"
-            value="${item.harga}"
-            style="width:100px;padding:5px"
-            onchange="ubahHarga(${item._i},this.value)">
-        </td>
-
-        <td>
-          <input type="number"
-            value="${item.qty || 0}"
-            min="0"
-            style="width:70px;padding:5px"
-            onchange="ubahQty(${item._i},this.value)">
-        </td>
-
-        <td>${rp(total)}</td>
-
-        <td style="color:#999">LOCK</td>
-      </tr>
-    `;
-  });
-
-}
-
-/* =========================
-   QTY UPDATE
-========================= */
-window.ubahQty = function(i,val){
-  if(!materials[i]) return;
-
-  materials[i].qty = Number(val);
-  commit();
-  render(search?.value || "");
+const DB = {
+  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
+  saveTickets: (d) => localStorage.setItem("tickets", JSON.stringify(d)),
 };
 
 /* =========================
-   HARGA UPDATE
+   ACTIVE TICKET
 ========================= */
-window.ubahHarga = function(i,val){
-  if(!materials[i]) return;
+function getTicket(){
+  let id = localStorage.getItem("activeTicketId");
+  return DB.getTickets().find(t => t.id == id);
+}
 
-  materials[i].harga = Number(val);
+/* =========================
+   MATERIAL STATE
+========================= */
+let materials = [];
+
+/* =========================
+   OPEN POPUP
+========================= */
+window.openMaterialPopup = function(){
+
+  let ticket = getTicket();
+  materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
+
+  // load qty existing
+  if(ticket?.material){
+    materials = materials.map(m => {
+      let old = ticket.material.find(x => x.nama === m.nama);
+      return {
+        ...m,
+        qty: old ? old.qty : 0
+      };
+    });
+  }
+
+  popup.style.display = "flex";
+  render("");
+};
+
+/* =========================
+   CLOSE POPUP
+========================= */
+window.closeMaterialPopup = function(){
+  popup.style.display = "none";
+};
+
+/* =========================
+   COMMIT SAVE
+========================= */
+function commit(){
+
+  let ticket = getTicket();
+  if(!ticket) return;
+
+  ticket.material = materials
+    .filter(m => Number(m.qty) > 0);
+
+  let all = DB.getTickets();
+  let i = all.findIndex(t => t.id == ticket.id);
+
+  if(i >= 0){
+    all[i] = ticket;
+    DB.saveTickets(all);
+  }
+}
+
+/* =========================
+   RENDER
+========================= */
+function render(filter=""){
+
+  let body = document.getElementById("matBody");
+  body.innerHTML = "";
+
+  let list = materials.filter(x =>
+    x.nama.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  list.forEach((m,i)=>{
+
+    let total = Number(m.qty||0) * Number(m.harga||0);
+
+    body.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${m.nama}</td>
+        <td>${m.satuan}</td>
+
+        <td>
+          <input type="number" value="${m.harga}" disabled>
+        </td>
+
+        <td>
+          <input type="number" value="${m.qty||0}" min="0"
+          onchange="setQty(${i},this.value)">
+        </td>
+
+        <td>${total.toLocaleString("id-ID")}</td>
+      </tr>
+    `;
+  });
+}
+
+/* =========================
+   SET QTY
+========================= */
+window.setQty = function(i,val){
+  materials[i].qty = Number(val);
   commit();
-  render(search?.value || "");
+  render(document.getElementById("search").value || "");
 };
 
 /* =========================
    SEARCH
 ========================= */
-if(search){
-  search.addEventListener("input", function(){
-    render(this.value);
-  });
-}
-
-/* =========================
-   AUTO SAVE
-========================= */
-window.addEventListener("beforeunload", function(){
-  commit();
+document.addEventListener("input", function(e){
+  if(e.target.id === "search"){
+    render(e.target.value);
+  }
 });
-
-/* =========================
-   INIT
-========================= */
-render("");
 
 });

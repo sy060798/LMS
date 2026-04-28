@@ -111,43 +111,82 @@ loadTable(search.value);
 /* =========================
    EXPORT
 ========================= */
-window.exportExcel = function(){
+function exportExcel(){
+
+let data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
 if(data.length===0){
 alert("Data kosong");
 return;
 }
 
+/* ambil semua nama material unik */
+let allMat = [];
+
+data.forEach(t=>{
+(t.material || []).forEach(m=>{
+if(Number(m.qty)>0 && !allMat.includes(m.nama)){
+allMat.push(m.nama);
+}
+});
+});
+
+/* header */
 let csv = [];
 
-csv.push([
+let header = [
 "No","Customer","Project","SPK","Tanggal","City","Status"
-]);
+];
 
-data.forEach((x,i)=>{
+header = header.concat(allMat);
+header.push("Total Harga");
 
-csv.push([
+csv.push(header);
+
+/* isi */
+data.forEach((t,i)=>{
+
+let row = [
 i+1,
-x.customer || "",
-x.project || "",
-x.spk || "",
-x.tanggal || "",
-x.city || "",
-x.status || ""
-]);
+t.customer || "",
+t.project || "",
+t.spk || "",
+t.tanggal || "",
+t.city || "",
+t.status || ""
+];
+
+let grand = 0;
+
+allMat.forEach(nama=>{
+
+let found = (t.material || []).find(x => x.nama === nama);
+
+if(found){
+row.push(found.qty || 0);
+grand += Number(found.qty||0) * Number(found.harga||0);
+}else{
+row.push("");
+}
 
 });
 
-let content = csv.map(e=>e.join(",")).join("\n");
+row.push(grand);
 
-let blob = new Blob(
-[content],
-{type:"text/csv;charset=utf-8;"}
-);
+csv.push(row);
 
-let link = document.createElement("a");
-link.href = URL.createObjectURL(blob);
-link.download = "FS_Ticket_Report.csv";
+});
+
+/* download */
+let content = csv.map(r=>r.join(",")).join("\n");
+
+let blob = new Blob([content],{
+type:"text/csv;charset=utf-8;"
+});
+
+let link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download="Laporan_BOQ.csv";
 link.click();
 
 }

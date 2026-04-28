@@ -80,7 +80,6 @@ border-radius:8px;
 min-width:280px;
 }
 
-/* BUTTON */
 .icon-btn{
 border:none;
 padding:6px 10px;
@@ -92,22 +91,23 @@ background:#1565c0;
 }
 
 /* =========================
-   POPUP MATERIAL
+   POPUP MATERIAL (FIXED)
 ========================= */
-#materialModal{
+#materialPopup{
 display:none;
 position:fixed;
 top:0;left:0;
 width:100%;height:100%;
-background:rgba(0,0,0,.5);
-z-index:999;
+background:rgba(0,0,0,.6);
+z-index:9999;
+justify-content:center;
+align-items:center;
 }
 
 .modal-box{
 background:#fff;
 width:90%;
 max-width:1000px;
-margin:40px auto;
 padding:20px;
 border-radius:12px;
 max-height:85vh;
@@ -138,6 +138,9 @@ cursor:pointer;
 <nav>
 <a href="index.html">Dashboard</a>
 <a href="page/addtiket.html">Add Ticket</a>
+
+<!-- ❌ MATERIAL HAPUS DARI MENU (sesuai request kamu) -->
+
 <a href="#" onclick="exportExcel()">Export Excel</a>
 <a href="#" onclick="saveNow()">Save</a>
 </nav>
@@ -181,15 +184,18 @@ cursor:pointer;
 <!-- =========================
      MATERIAL POPUP
 ========================= -->
-<div id="materialModal">
+<div id="materialPopup">
+
   <div class="modal-box">
 
     <div class="modal-header">
-      <h2>Material Ticket</h2>
+      <h2>📦 Material Ticket</h2>
       <button class="close-btn" onclick="closeMaterialPopup()">X</button>
     </div>
 
-    <input type="text" id="searchMat" placeholder="Cari material..." style="padding:10px;width:100%;margin-bottom:10px">
+    <input id="matSearch"
+      placeholder="Cari material..."
+      style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px">
 
     <table>
       <thead>
@@ -213,7 +219,7 @@ cursor:pointer;
 <script src="./js/syncEngine.js"></script>
 <script src="./js/index.js"></script>
 <script src="./js/addtiket.js"></script>
-<script src="./js/material-popup.js"></script>
+<script src="./js/material.js"></script>
 
 </body>
 </html>

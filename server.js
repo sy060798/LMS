@@ -182,3 +182,15 @@ setInterval(() => {
    (INI YANG BIKIN PER TICKET AMAN)
 =============================== */
 window.syncMaterialToActiveTicket = syncMaterialToActiveTicket;
+
+
+/* =========================
+   SAVE GLOBAL (INDEX BUTTON)
+========================= */
+function saveNow(){
+  if(typeof uploadTickets === "function") uploadTickets();
+  if(typeof uploadMaterial === "function") uploadMaterial();
+  alert("Data berhasil sync ke server");
+}
+
+window.saveNow = saveNow;

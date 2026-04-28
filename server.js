@@ -1,6 +1,6 @@
 /* =========================================
    server.js
-   FS Ticket DB Sync Server + Loading
+   FS Ticket DB Sync Server + Loading FIX
 ========================================= */
 
 if (typeof SERVER_URL === "undefined") {
@@ -8,79 +8,126 @@ if (typeof SERVER_URL === "undefined") {
 }
 
 /* ===============================
-   LOADING MINI
+   LOADING MINI FIX
 =============================== */
 function showLoading(txt = "Loading...") {
 
-  let old = document.getElementById("miniLoading");
-  if (old) old.remove();
+  hideLoading();
 
-  let div = document.createElement("div");
-  div.id = "miniLoading";
+  let box = document.createElement("div");
+  box.id = "miniLoading";
 
-  div.innerHTML = `
-  <div class="spin"></div>
-  <div style="margin-top:8px;font-size:13px">${txt}</div>
+  box.innerHTML = `
+    <div class="loading-box">
+      <div class="spin"></div>
+      <div class="load-text">${txt}</div>
+      <div class="bar-wrap">
+        <div class="bar-run"></div>
+      </div>
+    </div>
   `;
 
-  div.style.position = "fixed";
-  div.style.top = "50%";
-  div.style.left = "50%";
-  div.style.transform = "translate(-50%,-50%)";
-  div.style.background = "#fff";
-  div.style.padding = "18px 22px";
-  div.style.borderRadius = "12px";
-  div.style.boxShadow = "0 5px 20px rgba(0,0,0,.2)";
-  div.style.zIndex = "99999";
-  div.style.textAlign = "center";
-  div.style.fontFamily = "Arial";
-
-  document.body.appendChild(div);
-
-  let style = document.createElement("style");
-  style.innerHTML = `
-  .spin{
-    width:28px;
-    height:28px;
-    border:4px solid #ddd;
-    border-top:4px solid #1565c0;
-    border-radius:50%;
-    margin:auto;
-    animation:putar 1s linear infinite;
-  }
-
-  @keyframes putar{
-    from{transform:rotate(0deg)}
-    to{transform:rotate(360deg)}
-  }
-  `;
-  document.head.appendChild(style);
+  document.body.appendChild(box);
 
 }
 
+/* =============================== */
 function hideLoading() {
   let x = document.getElementById("miniLoading");
   if (x) x.remove();
 }
 
 /* ===============================
+   CSS AUTO INJECT
+=============================== */
+(function(){
+
+let style = document.createElement("style");
+
+style.innerHTML = `
+#miniLoading{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:100%;
+background:rgba(255,255,255,.65);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:999999;
+backdrop-filter:blur(2px);
+}
+
+.loading-box{
+width:230px;
+background:#ffffff;
+padding:20px;
+border-radius:14px;
+box-shadow:0 10px 25px rgba(0,0,0,.15);
+text-align:center;
+font-family:Arial,sans-serif;
+}
+
+.spin{
+width:34px;
+height:34px;
+margin:auto;
+border:4px solid #dfe6e9;
+border-top:4px solid #1565c0;
+border-radius:50%;
+animation:spin360 .8s linear infinite;
+}
+
+.load-text{
+margin-top:10px;
+font-size:14px;
+font-weight:bold;
+color:#1565c0;
+}
+
+.bar-wrap{
+margin-top:12px;
+height:8px;
+background:#e3f2fd;
+border-radius:20px;
+overflow:hidden;
+}
+
+.bar-run{
+height:100%;
+width:40%;
+background:#1565c0;
+border-radius:20px;
+animation:runbar 1s ease infinite;
+}
+
+@keyframes spin360{
+from{transform:rotate(0deg)}
+to{transform:rotate(360deg)}
+}
+
+@keyframes runbar{
+0%{margin-left:-40%}
+100%{margin-left:100%}
+}
+`;
+
+document.head.appendChild(style);
+
+})();
+
+/* ===============================
    CEK SERVER
 =============================== */
 async function cekServer() {
-
-  try {
-
+  try{
     const res = await fetch(SERVER_URL + "/");
     const txt = await res.text();
-
-    console.log("SERVER AKTIF :", txt);
-
-  } catch (err) {
-
-    console.error("SERVER OFFLINE :", err);
-
+    console.log("SERVER AKTIF:", txt);
+  }catch(err){
+    console.log("SERVER OFFLINE");
   }
-
 }
 
 /* ===============================
@@ -90,31 +137,28 @@ async function uploadTickets() {
 
   const tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 
-  try {
+  try{
 
     showLoading("Upload Ticket...");
 
-    const res = await fetch(SERVER_URL + "/saveTickets", {
-      method: "POST",
-      headers: {
+    await fetch(SERVER_URL + "/saveTickets",{
+      method:"POST",
+      headers:{
         "Content-Type":"application/json"
       },
-      body: JSON.stringify({
+      body:JSON.stringify({
         tickets:tickets
       })
     });
 
-    await res.json();
-
     hideLoading();
 
-  } catch (err) {
+  }catch(err){
 
     hideLoading();
-    console.error(err);
+    console.log(err);
 
   }
-
 }
 
 /* ===============================
@@ -122,27 +166,25 @@ async function uploadTickets() {
 =============================== */
 async function downloadTickets() {
 
-  try {
+  try{
 
     showLoading("Sync Ticket...");
 
     const res = await fetch(SERVER_URL + "/tickets");
-
     const data = await res.json();
 
-    if (Array.isArray(data)) {
+    if(Array.isArray(data)){
       localStorage.setItem("tickets", JSON.stringify(data));
     }
 
     hideLoading();
 
-  } catch (err) {
+  }catch(err){
 
     hideLoading();
-    console.error(err);
+    console.log(err);
 
   }
-
 }
 
 /* ===============================
@@ -150,33 +192,30 @@ async function downloadTickets() {
 =============================== */
 async function uploadMaterial() {
 
-  const data = JSON.parse(localStorage.getItem("materialMaster") || "[]");
+  const material = JSON.parse(localStorage.getItem("materialMaster") || "[]");
 
-  try {
+  try{
 
     showLoading("Upload Material...");
 
-    const res = await fetch(SERVER_URL + "/saveMaterial", {
+    await fetch(SERVER_URL + "/saveMaterial",{
       method:"POST",
       headers:{
         "Content-Type":"application/json"
       },
       body:JSON.stringify({
-        material:data
+        material:material
       })
     });
 
-    await res.json();
-
     hideLoading();
 
-  } catch(err){
+  }catch(err){
 
     hideLoading();
-    console.error(err);
+    console.log(err);
 
   }
-
 }
 
 /* ===============================
@@ -184,12 +223,11 @@ async function uploadMaterial() {
 =============================== */
 async function downloadMaterial() {
 
-  try {
+  try{
 
     showLoading("Sync Material...");
 
     const res = await fetch(SERVER_URL + "/material");
-
     const data = await res.json();
 
     if(Array.isArray(data)){
@@ -198,30 +236,31 @@ async function downloadMaterial() {
 
     hideLoading();
 
-  } catch(err){
+  }catch(err){
 
     hideLoading();
-    console.error(err);
+    console.log(err);
 
   }
-
 }
 
 /* ===============================
    AUTO START
 =============================== */
+(async function(){
 
-cekServer();
-downloadTickets();
-downloadMaterial();
+await cekServer();
+await downloadTickets();
+await downloadMaterial();
+
+})();
 
 /* ===============================
-   AUTO SYNC
+   AUTO SYNC 1 MENIT
 =============================== */
-
 setInterval(function(){
 
-  uploadTickets();
-  uploadMaterial();
+uploadTickets();
+uploadMaterial();
 
 },60000);

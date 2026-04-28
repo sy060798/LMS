@@ -1,208 +1,113 @@
-/* =========================================
-   SERVER.JS - FS TICKET SYSTEM (FINAL FIX)
-========================================= */
+(function () {
 
-if (typeof SERVER_URL === "undefined") {
-  var SERVER_URL = "https://tracking-server-production-6a12.up.railway.app";
-}
+/* =========================
+   SERVER
+========================= */
+const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
-/* ===============================
-   AUTH
-=============================== */
-function getAuth(){
-  return JSON.parse(localStorage.getItem("auth") || "null");
-}
+/* =========================
+   LOCAL HELPERS
+========================= */
+const DB = {
+  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
+  saveTickets: (data) => localStorage.setItem("tickets", JSON.stringify(data)),
 
-/* ===============================
-   LOADING UI
-=============================== */
-function showLoading(txt = "Loading...") {
-  hideLoading();
+  getActiveId: () => localStorage.getItem("activeTicketId")
+};
 
-  let box = document.createElement("div");
-  box.id = "miniLoading";
+/* =========================
+   SYNC MATERIAL KE TICKET
+   (CORE LOGIC)
+========================= */
+function syncMaterial(materials){
 
-  box.innerHTML = `
-    <div class="loading-box">
-      <div class="spin"></div>
-      <div class="load-text">${txt}</div>
-      <div class="bar-wrap">
-        <div class="bar-run"></div>
-      </div>
-    </div>
-  `;
+  let tickets = DB.getTickets();
+  let id = DB.getActiveId();
 
-  document.body.appendChild(box);
-}
-
-function hideLoading(){
-  let x = document.getElementById("miniLoading");
-  if(x) x.remove();
-}
-
-/* ===============================
-   SERVER CHECK
-=============================== */
-async function cekServer(){
-  try{
-    await fetch(SERVER_URL + "/");
-  }catch(e){
-    console.log("SERVER OFFLINE");
-  }
-}
-
-/* ===============================
-   LOAD ALL DATA
-=============================== */
-async function loadAllData(){
-  try{
-
-    showLoading("Sync Data...");
-
-    let tickets = await fetch(SERVER_URL + "/tickets").then(r=>r.json()).catch(()=>[]);
-    let material = await fetch(SERVER_URL + "/material").then(r=>r.json()).catch(()=>[]);
-
-    if(Array.isArray(tickets)){
-      localStorage.setItem("tickets", JSON.stringify(tickets));
-    }
-
-    if(Array.isArray(material)){
-      localStorage.setItem("materialMaster", JSON.stringify(material));
-    }
-
-    hideLoading();
-
-  }catch(e){
-    hideLoading();
-    console.log(e);
-  }
-}
-
-/* ===============================
-   ACTIVE TICKET
-=============================== */
-function getActiveTicketId(){
-  return localStorage.getItem("activeTicketId");
-}
-
-/* ===============================
-   🔥 SYNC MATERIAL → ACTIVE TICKET
-=============================== */
-function syncMaterialToActiveTicket(){
-
-  let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
-  let activeId = getActiveTicketId();
-
-  if(!activeId) return;
-
-  let ticket = tickets.find(t => t.id == activeId);
+  let ticket = tickets.find(t => t.id == id);
   if(!ticket) return;
 
-  let materials = JSON.parse(localStorage.getItem("materialMaster") || "[]");
+  ticket.material = (materials || []).filter(m => Number(m.qty) > 0);
 
-  // ONLY QTY > 0
-  ticket.material = materials.filter(m => Number(m.qty) > 0);
-
-  localStorage.setItem("tickets", JSON.stringify(tickets));
+  DB.saveTickets(tickets);
 }
 
-/* ===============================
-   SAVE LOCAL (ANTI LOSS)
-=============================== */
-function saveLocal(){
-  syncMaterialToActiveTicket();
+/* =========================
+   SAVE LOCAL
+========================= */
+function saveLocal(materials){
+  syncMaterial(materials);
 }
 
-/* ===============================
-   UPLOAD TICKETS
-=============================== */
-async function uploadTickets(){
-
-  let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
+/* =========================
+   PUSH KE SERVER (TICKETS + MATERIAL)
+========================= */
+async function pushToServer(){
 
   try{
-    await fetch(SERVER_URL + "/saveTickets",{
+    await fetch(SERVER_URL + "/syncTickets",{
       method:"POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
-      body:JSON.stringify({tickets})
-    });
-  }catch(e){
-    console.log(e);
-  }
-}
-
-/* ===============================
-   UPLOAD MATERIAL PER TICKET
-=============================== */
-async function uploadMaterial(){
-
-  const auth = getAuth();
-  if(!auth || !auth.token) return;
-
-  let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
-  let activeId = getActiveTicketId();
-
-  if(!activeId) return;
-
-  let ticket = tickets.find(t => t.id == activeId);
-  if(!ticket) return;
-
-  try{
-    await fetch(SERVER_URL + "/saveMaterial",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer " + auth.token
-      },
-      body:JSON.stringify({
-        ticketId: activeId,
-        material: ticket.material || []
+      headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        tickets: DB.getTickets()
       })
     });
   }catch(e){
-    console.log(e);
+    console.log("SYNC FAIL", e);
   }
+
 }
 
-/* ===============================
-   AUTO START
-=============================== */
+/* =========================
+   LOAD SERVER DATA
+========================= */
+async function pullFromServer(){
+
+  try{
+    let res = await fetch(SERVER_URL + "/tickets");
+    let data = await res.json();
+
+    if(Array.isArray(data)){
+      DB.saveTickets(data);
+    }
+
+  }catch(e){
+    console.log("LOAD FAIL", e);
+  }
+
+}
+
+/* =========================
+   AUTO INIT
+========================= */
 (async function(){
-  await cekServer();
-  await loadAllData();
+  await pullFromServer();
 })();
 
-/* ===============================
+/* =========================
    AUTO SYNC
-=============================== */
+========================= */
 setInterval(() => {
-  saveLocal();
-  uploadTickets();
-  uploadMaterial();
+  pushToServer();
 }, 30000);
 
-/* ===============================
-   BEFORE CLOSE
-=============================== */
+/* =========================
+   BEFORE CLOSE SAVE
+========================= */
 window.addEventListener("beforeunload", function(){
-  saveLocal();
-  uploadTickets();
-  uploadMaterial();
+  pushToServer();
 });
 
-/* ===============================
-   GLOBAL HOOK
-=============================== */
-window.syncMaterialToActiveTicket = syncMaterialToActiveTicket;
-
-/* ===============================
-   SAVE BUTTON FIXED
-=============================== */
-window.saveNow = function(){
-  saveLocal();          // <- penting
-  uploadTickets();
-  uploadMaterial();
-  alert("Data berhasil sync ke server");
+/* =========================
+   EXPOSE GLOBAL
+========================= */
+window.FS = {
+  syncMaterial,
+  saveLocal,
+  pushToServer,
+  pullFromServer,
+  getTickets: DB.getTickets,
+  getActiveId: DB.getActiveId
 };
+
+})();

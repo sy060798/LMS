@@ -1,112 +1,164 @@
-(function () {
+const express = require("express");
+const cors = require("cors");
+
+const app = express();
 
 /* =========================
-   SERVER
+   CONFIG
 ========================= */
-const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
+app.use(cors());
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true }));
 
 /* =========================
-   DB HELPER
+   DATABASE (IN MEMORY)
 ========================= */
-const DB = {
-  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
-  saveTickets: (data) => localStorage.setItem("tickets", JSON.stringify(data)),
-
-  getActiveId: () => localStorage.getItem("activeTicketId")
+let db = {
+  LMS: []
 };
 
 /* =========================
-   SYNC MATERIAL → TICKET (SPK BASED)
+   HEALTH CHECK
 ========================= */
-function syncMaterial(materials){
-
-  let tickets = DB.getTickets();
-  let spk = DB.getActiveId();
-
-  let ticket = tickets.find(t => t.spk == spk);
-  if(!ticket) return;
-
-  ticket.material = (materials || []).filter(m => Number(m.qty) > 0);
-
-  DB.saveTickets(tickets);
-}
-
-/* =========================
-   SAVE LOCAL
-========================= */
-function saveLocal(materials){
-  syncMaterial(materials);
-}
-
-/* =========================
-   PUSH SERVER
-========================= */
-async function pushToServer(){
-
-  try{
-    await fetch(SERVER_URL + "/syncTickets",{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({
-        tickets: DB.getTickets()
-      })
-    });
-  }catch(e){
-    console.log("SYNC FAIL", e);
-  }
-
-}
-
-/* =========================
-   PULL SERVER
-========================= */
-async function pullFromServer(){
-
-  try{
-    let res = await fetch(SERVER_URL + "/tickets");
-    let data = await res.json();
-
-    if(Array.isArray(data)){
-      DB.saveTickets(data);
-    }
-
-  }catch(e){
-    console.log("LOAD FAIL", e);
-  }
-
-}
-
-/* =========================
-   INIT
-========================= */
-(async function(){
-  await pullFromServer();
-})();
-
-/* =========================
-   AUTO SYNC
-========================= */
-setInterval(() => {
-  pushToServer();
-}, 30000);
-
-/* =========================
-   CLOSE SAVE
-========================= */
-window.addEventListener("beforeunload", function(){
-  pushToServer();
+app.get("/", (req, res) => {
+  res.send("🚀 LMS SERVER ACTIVE");
 });
 
 /* =========================
-   GLOBAL API
+   GET ALL DATA
 ========================= */
-window.FS = {
-  syncMaterial,
-  saveLocal,
-  pushToServer,
-  pullFromServer,
-  getTickets: DB.getTickets,
-  getActiveId: DB.getActiveId
-};
+app.get("/api/get", (req, res) => {
+  try {
 
-})();
+    let type = req.query.type || "LMS";
+
+    if (!db[type]) db[type] = [];
+
+    res.json(db[type]);
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "GET FAIL" });
+  }
+});
+
+/* =========================
+   SAVE ALL DATA (FULL SYNC)
+========================= */
+app.post("/api/save", (req, res) => {
+  try {
+
+    let { type, data } = req.body;
+
+    if (!type || !Array.isArray(data)) {
+      return res.status(400).json({
+        error: "Format: { type:'LMS', data:[] }"
+      });
+    }
+
+    if (!db[type]) db[type] = [];
+
+    /* =========================
+       NORMALIZE DATA (ANTI ERROR)
+    ========================= */
+    db[type] = data.map(item => ({
+      id: item.id || item.spk || Date.now(),
+      spk: item.spk || "",
+      customer: item.customer || "",
+      project: item.project || "",
+      tanggal: item.tanggal || "",
+      city: item.city || "",
+      status: item.status || "Open",
+      material: Array.isArray(item.material)
+        ? item.material.filter(m => Number(m.qty) > 0)
+        : [],
+      created: item.created || new Date().toISOString()
+    }));
+
+    res.json({
+      status: "ok",
+      total: db[type].length
+    });
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "SAVE FAIL" });
+  }
+});
+
+/* =========================
+   DELETE DATA
+========================= */
+app.post("/api/delete", (req, res) => {
+  try {
+
+    let { type, ids } = req.body;
+
+    if (!db[type]) return res.json({ status: "ok" });
+
+    db[type] = db[type].filter(d =>
+      !ids.includes(String(d.id || d.spk))
+    );
+
+    res.json({
+      status: "deleted",
+      total: db[type].length
+    });
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "DELETE FAIL" });
+  }
+});
+
+/* =========================
+   CLEAR DATA
+========================= */
+app.post("/api/clear", (req, res) => {
+  try {
+
+    let { type } = req.body;
+
+    if (!type) return res.status(400).json({ error: "TYPE REQUIRED" });
+
+    db[type] = [];
+
+    res.json({ status: "cleared" });
+
+  } catch (e) {
+    console.log(e);
+    res.status(500).json({ error: "CLEAR FAIL" });
+  }
+});
+
+/* =========================
+   INFO DASHBOARD
+========================= */
+app.get("/api/info", (req, res) => {
+
+  let total = db.LMS.length;
+
+  let open = db.LMS.filter(x => x.status === "Open").length;
+  let close = db.LMS.filter(x => x.status === "Close").length;
+
+  let materialCount = db.LMS.filter(x =>
+    x.material && x.material.length > 0
+  ).length;
+
+  res.json({
+    total,
+    open,
+    close,
+    materialCount
+  });
+
+});
+
+/* =========================
+   START SERVER
+========================= */
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log("🚀 LMS SERVER RUNNING ON " + PORT);
+});

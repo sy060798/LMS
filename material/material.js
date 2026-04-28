@@ -6,91 +6,74 @@ const search = document.getElementById("search");
 if(!matBody) return;
 
 /* =========================
-   LOAD TICKET + MATERIAL
+   LOAD TICKET
 ========================= */
 let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 let activeId = localStorage.getItem("activeTicketId");
 
 let ticket = tickets.find(t => t.id == activeId);
 
-/* MATERIAL PER TICKET */
+/* material per ticket */
 let materials = ticket?.material ? [...ticket.material] : [];
 
 /* =========================
-   SAVE LOCAL
-========================= */
-function saveData(){
-  if(ticket){
-    ticket.material = materials;
-    localStorage.setItem("tickets", JSON.stringify(tickets));
-  }
-}
-
-/* =========================
-   SYNC KE TICKET (FINAL DATA ONLY > 0)
-========================= */
-function syncToTicket(){
-  if(ticket){
-    ticket.material = materials.filter(m => Number(m.qty) > 0);
-    localStorage.setItem("tickets", JSON.stringify(tickets));
-  }
-}
-
-/* =========================
-   COMMIT (RECOMMENDED)
+   SAVE + SYNC
 ========================= */
 function commit(){
-  saveData();
-  syncToTicket();
+
+  if(!ticket) return;
+
+  // hanya qty > 0
+  ticket.material = materials.filter(m => Number(m.qty) > 0);
+
+  localStorage.setItem("tickets", JSON.stringify(tickets));
 }
 
 /* =========================
-   FORMAT RUPIAH
+   FORMAT
 ========================= */
 function rp(x){
   return Number(x || 0).toLocaleString("id-ID");
 }
 
 /* =========================
-   RENDER TABLE
+   RENDER
 ========================= */
 function render(filter=""){
 
-matBody.innerHTML = "";
+  matBody.innerHTML = "";
 
-let list = materials
-.map((m,i)=>({...m,_i:i}))
-.filter(x =>
-  !filter || x.nama.toLowerCase().includes(filter.toLowerCase())
-);
+  let list = materials
+    .map((m,i)=>({...m,_i:i}))
+    .filter(x => !filter || x.nama.toLowerCase().includes(filter.toLowerCase()));
 
-list.forEach((item,i)=>{
+  list.forEach((item,i)=>{
 
-let total = Number(item.harga) * Number(item.qty || 0);
+    let total = Number(item.harga) * Number(item.qty || 0);
 
-matBody.innerHTML += `
-<tr>
-<td>${i+1}</td>
-<td>${item.nama}</td>
-<td>${item.satuan}</td>
-<td>${rp(item.harga)}</td>
+    matBody.innerHTML += `
+      <tr>
+        <td>${i+1}</td>
+        <td>${item.nama}</td>
+        <td>${item.satuan}</td>
+        <td>${rp(item.harga)}</td>
 
-<td>
-<input type="number" value="${item.qty || 0}" min="0"
-style="width:70px;padding:5px"
-onchange="ubahQty(${item._i},this.value)">
-</td>
+        <td>
+          <input type="number" value="${item.qty || 0}" min="0"
+          style="width:70px;padding:5px"
+          onchange="ubahQty(${item._i},this.value)">
+        </td>
 
-<td>${rp(total)}</td>
+        <td>${rp(total)}</td>
 
-<td>
-<span onclick="editMaterial(${item._i})">✏️</span>
-<span onclick="hapusMaterial(${item._i})">🗑️</span>
-</td>
-</tr>
-`;
+        <td>
+          <span onclick="editMaterial(${item._i})">✏️</span>
+          <span onclick="hapusMaterial(${item._i})">🗑️</span>
+        </td>
+      </tr>
+    `;
 
-});
+  });
 
 }
 
@@ -99,82 +82,82 @@ onchange="ubahQty(${item._i},this.value)">
 ========================= */
 window.ubahQty = function(i,val){
 
-if(!materials[i]) return;
+  if(!materials[i]) return;
 
-materials[i].qty = Number(val);
+  materials[i].qty = Number(val);
 
-commit();
-render(search?.value || "");
+  commit();
+  render(search?.value || "");
 
 };
 
 /* =========================
-   ADD MATERIAL
+   ADD
 ========================= */
 window.addMaterial = function(){
 
-let nama = prompt("Nama Material");
-if(!nama) return;
+  let nama = prompt("Nama Material");
+  if(!nama) return;
 
-let satuan = prompt("Satuan");
-if(!satuan) return;
+  let satuan = prompt("Satuan");
+  if(!satuan) return;
 
-let harga = prompt("Harga");
-if(harga === null) return;
+  let harga = prompt("Harga");
+  if(harga === null) return;
 
-materials.push({
-  nama,
-  satuan,
-  harga:Number(harga),
-  qty:0
-});
+  materials.push({
+    nama,
+    satuan,
+    harga:Number(harga),
+    qty:0
+  });
 
-commit();
-render(search?.value || "");
+  commit();
+  render(search?.value || "");
 
 };
 
 /* =========================
-   EDIT MATERIAL
+   EDIT
 ========================= */
 window.editMaterial = function(i){
 
-let x = materials[i];
-if(!x) return;
+  let x = materials[i];
+  if(!x) return;
 
-let nama = prompt("Nama", x.nama);
-if(!nama) return;
+  let nama = prompt("Nama", x.nama);
+  if(!nama) return;
 
-let satuan = prompt("Satuan", x.satuan);
-if(!satuan) return;
+  let satuan = prompt("Satuan", x.satuan);
+  if(!satuan) return;
 
-let harga = prompt("Harga", x.harga);
-if(harga === null) return;
+  let harga = prompt("Harga", x.harga);
+  if(harga === null) return;
 
-materials[i] = {
-  ...x,
-  nama,
-  satuan,
-  harga:Number(harga)
-};
+  materials[i] = {
+    ...x,
+    nama,
+    satuan,
+    harga:Number(harga)
+  };
 
-commit();
-render(search?.value || "");
+  commit();
+  render(search?.value || "");
 
 };
 
 /* =========================
-   DELETE MATERIAL
+   DELETE
 ========================= */
 window.hapusMaterial = function(i){
 
-if(!materials[i]) return;
+  if(!materials[i]) return;
 
-if(confirm("Hapus material ini?")){
-materials.splice(i,1);
-commit();
-render(search?.value || "");
-}
+  if(confirm("Hapus material ini?")){
+    materials.splice(i,1);
+    commit();
+    render(search?.value || "");
+  }
 
 };
 
@@ -182,25 +165,18 @@ render(search?.value || "");
    SEARCH
 ========================= */
 if(search){
-search.addEventListener("input", function(){
-render(this.value);
-});
+  search.addEventListener("input", function(){
+    render(this.value);
+  });
 }
 
 /* =========================
    FORCE SAVE BUTTON
 ========================= */
 window.forceSave = function(){
-commit();
-alert("✔ Material berhasil disimpan ke ticket");
+  commit();
+  alert("✔ Material tersimpan ke ticket");
 };
-
-/* =========================
-   AUTO SAVE BEFORE CLOSE
-========================= */
-window.addEventListener("beforeunload", function(){
-commit();
-});
 
 /* =========================
    INIT

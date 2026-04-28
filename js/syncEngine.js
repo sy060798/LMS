@@ -8,7 +8,7 @@ const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12
 const DB = {
   getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
 
-  saveTicketsLocal: (data) => {
+  saveTickets: (data) => {
     localStorage.setItem("tickets", JSON.stringify(data));
   },
 
@@ -19,27 +19,35 @@ const DB = {
    GET ACTIVE TICKET
 ========================= */
 function getActiveTicket(){
-  return DB.getTickets().find(t => t.spk == DB.getActiveSpk());
+  return DB.getTickets().find(t => t.id == DB.getActiveSpk());
 }
 
 /* =========================
    CLEAN MATERIAL (ONLY QTY > 0)
 ========================= */
-function cleanTickets(tickets){
+function cleanMaterials(tickets){
 
   return tickets.map(t => {
 
-    if(t.material && Array.isArray(t.material)){
-      t.material = t.material.filter(m => Number(m.qty) > 0);
+    if(Array.isArray(t.material)){
+
+      t.material = t.material
+        .filter(m => Number(m.qty) > 0)
+        .map(m => ({
+          nama: m.nama,
+          satuan: m.satuan,
+          harga: Number(m.harga || 0),
+          qty: Number(m.qty || 0)
+        }));
+
     }
 
     return t;
   });
-
 }
 
 /* =========================
-   🔥 MAIN SAVE ALL (ONE BUTTON)
+   🔥 SAVE ALL (LOCAL + SERVER)
 ========================= */
 async function saveAll(){
 
@@ -47,11 +55,11 @@ async function saveAll(){
 
     let tickets = DB.getTickets();
 
-    // cleanup material
-    tickets = cleanTickets(tickets);
+    // clean material
+    tickets = cleanMaterials(tickets);
 
-    // save local first
-    DB.saveTicketsLocal(tickets);
+    // save local
+    DB.saveTickets(tickets);
 
     // push server
     await fetch(SERVER_URL + "/api/save", {
@@ -63,17 +71,18 @@ async function saveAll(){
       })
     });
 
-    alert("✔ Semua data berhasil disimpan");
+    // trigger UI update
+    window.dispatchEvent(new Event("ticketsUpdated"));
+
+    console.log("✔ SAVE SUCCESS");
 
   } catch (e) {
-    console.log("SAVE ERROR", e);
-    alert("❌ Gagal save ke server");
+    console.log("❌ SAVE ERROR", e);
   }
-
 }
 
 /* =========================
-   LOAD SERVER
+   🔥 LOAD FROM SERVER
 ========================= */
 async function loadAll(){
 
@@ -83,25 +92,49 @@ async function loadAll(){
     let data = await res.json();
 
     if(Array.isArray(data)){
-      DB.saveTicketsLocal(data);
+
+      // clean data server juga
+      data = cleanMaterials(data);
+
+      // save ke local
+      DB.saveTickets(data);
+
+      // trigger UI update
+      window.dispatchEvent(new Event("ticketsUpdated"));
+
+      console.log("✔ LOAD SUCCESS");
+
     }
 
   } catch (e) {
-    console.log("LOAD ERROR", e);
+    console.log("❌ LOAD ERROR", e);
   }
-
 }
 
 /* =========================
-   INIT
+   AUTO INIT LOAD
 ========================= */
 (async function(){
   await loadAll();
 })();
 
 /* =========================
-   EXPOSE GLOBAL
+   AUTO SYNC (OPTIONAL)
 ========================= */
-window.SAVE_ALL = saveAll;
+setInterval(saveAll, 30000);
+
+window.addEventListener("beforeunload", saveAll);
+
+/* =========================
+   GLOBAL API
+========================= */
+window.FS = {
+  DB,
+  saveAll,
+  loadAll,
+  cleanMaterials
+};
+
+window.saveNow = saveAll;
 
 })();

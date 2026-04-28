@@ -137,34 +137,46 @@ function norm(x){
 return (x || "").toString().trim().toLowerCase();
 }
 
+/* =========================
+   AMBIL MATERIAL (QTY >= 1)
+========================= */
 let matMap = new Map();
 
 data.forEach(t=>{
 (t.material || []).forEach(m=>{
-if(Number(m.qty) > 0){
-matMap.set(norm(m.nama), m.nama);
+
+let qty = Number(m.qty || 0);
+
+if(qty >= 1 && m.nama){
+
+matMap.set(norm(m.nama), {
+nama: m.nama,
+harga: Number(m.harga || 0)
+});
+
 }
+
 });
 });
 
 let allMat = Array.from(matMap.values());
 
+/* =========================
+   DATA SHEET
+========================= */
 let ws_data = [];
 
 ws_data.push([
 "DATA TICKET","","","","","","",
-"MATERIAL","","","","","","","","",
-"TOTAL"
+"Material","","",
+""
 ]);
 
-let row2 = [
-"No","Customer","Project","SPK","Tanggal","City","Status"
-];
-
-row2 = row2.concat(allMat);
-row2.push("Grand Total");
-
-ws_data.push(row2);
+ws_data.push([
+"No","Customer","Project","SPK","Tanggal","City","Status",
+...allMat.map(m => m.nama),
+"Grand Total"
+]);
 
 data.forEach((t,i)=>{
 
@@ -180,19 +192,21 @@ t.status || ""
 
 let grand = 0;
 
-allMat.forEach(matName=>{
+allMat.forEach(mat=>{
 
 let found = (t.material || []).find(m =>
-norm(m.nama) === norm(matName)
+norm(m.nama) === norm(mat.nama) && Number(m.qty) >= 1
 );
 
-if(found && Number(found.qty) > 0){
+if(found){
 
-row.push(Number(found.qty));
-grand += Number(found.qty) * Number(found.harga || 0);
+let total = Number(found.qty) * Number(found.harga || mat.harga || 0);
+
+row.push(total);
+grand += total;
 
 }else{
-row.push("");
+row.push(0);
 }
 
 });
@@ -203,19 +217,60 @@ ws_data.push(row);
 
 });
 
+/* =========================
+   WORKBOOK
+========================= */
 let wb = XLSX.utils.book_new();
 let ws = XLSX.utils.aoa_to_sheet(ws_data);
 
-ws["!merges"] = [
-{ s:{r:0,c:0}, e:{r:0,c:6} },
-{ s:{r:0,c:7}, e:{r:0,c:6+allMat.length} },
-{ s:{r:0,c:7+allMat.length}, e:{r:0,c:7+allMat.length} }
-];
+/* =========================
+   STYLE HEADER (WARNA)
+========================= */
+function styleCell(cell, color){
 
+if(!ws[cell]) return;
+
+ws[cell].s = {
+fill: {
+patternType: "solid",
+fgColor: { rgb: color }
+},
+font: {
+bold: true,
+color: { rgb: "FFFFFF" }
+},
+alignment: {
+horizontal: "center",
+vertical: "center"
+},
+border: {
+top: { style: "thin" },
+bottom: { style: "thin" },
+left: { style: "thin" },
+right: { style: "thin" }
+}
+};
+
+}
+
+/* HEADER ROW 1 */
+for(let c=0;c<7+allMat.length+1;c++){
+let col = XLSX.utils.encode_col(c);
+styleCell(col+"1","1F4E79"); // biru tua
+}
+
+/* HEADER ROW 2 */
+for(let c=0;c<7+allMat.length+1;c++){
+let col = XLSX.utils.encode_col(c);
+styleCell(col+"2","2F75B5"); // biru sedang
+}
+
+/* WIDTH */
 ws["!cols"] = Array(7 + allMat.length + 1).fill({wch:18});
 
-XLSX.utils.book_append_sheet(wb, ws, "Laporan");
-XLSX.writeFile(wb, "Laporan_BOQ_Professional.xlsx");
+/* EXPORT */
+XLSX.utils.book_append_sheet(wb, ws, "BOQ");
+XLSX.writeFile(wb, "BOQ_Material_Color.xlsx");
 
 };
 

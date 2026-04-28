@@ -1,123 +1,123 @@
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", ()=>{
 
-const tickets = JSON.parse(localStorage.getItem("tickets")) || [];
-const ticketSelect = document.getElementById("ticketSelect");
 const matBody = document.getElementById("matBody");
-const grandTotal = document.getElementById("grandTotal");
 const search = document.getElementById("search");
 
-const materials = [
- {nama:"Kabel Drop 2 Core", satuan:"meter", harga:0},
- {nama:"Drop Wire Furukawa", satuan:"meter", harga:5000},
- {nama:"Tiang 7 meter", satuan:"batang", harga:1400000},
- {nama:"Tiang 9 meter", satuan:"batang", harga:1650000},
- {nama:"Pipa PVC 3/4 inch", satuan:"batang", harga:35000},
- {nama:"RJ45 Cat 6", satuan:"pcs", harga:5000},
- {nama:"ONT", satuan:"pcs", harga:0},
- {nama:"Roset", satuan:"pcs", harga:0},
- {nama:"Splitter 1:2", satuan:"unit", harga:0},
- {nama:"Splitter 1:8", satuan:"unit", harga:0},
- {nama:"Splitter 1:16", satuan:"unit", harga:0},
- {nama:"ODP", satuan:"lot", harga:350000}
+let materials = JSON.parse(localStorage.getItem("materialMaster"));
+
+if(!materials){
+
+materials = [
+
+{nama:"Kabel Drop 2 Core",satuan:"meter",harga:0},
+{nama:"Drop Wire Furukawa",satuan:"meter",harga:5000},
+{nama:"Tiang 7 meter",satuan:"batang",harga:1400000},
+{nama:"Tiang 9 meter",satuan:"batang",harga:1650000},
+{nama:"RJ45 Cat 6",satuan:"pcs",harga:5000},
+{nama:"OTB 12 Core",satuan:"unit",harga:1100000},
+{nama:"Transportasi",satuan:"lot",harga:250000}
+
 ];
 
-tickets.forEach((t,i)=>{
-    ticketSelect.innerHTML += `<option value="${i}">${t.no} - ${t.customer}</option>`;
+saveData();
+}
+
+function saveData(){
+localStorage.setItem("materialMaster", JSON.stringify(materials));
+}
+
+function rp(x){
+return Number(x).toLocaleString("id-ID");
+}
+
+function render(filter=""){
+
+matBody.innerHTML = "";
+
+materials
+.filter(x=>x.nama.toLowerCase().includes(filter.toLowerCase()))
+.forEach((x,i)=>{
+
+matBody.innerHTML += `
+<tr>
+<td>${i+1}</td>
+<td>${x.nama}</td>
+<td>${x.satuan}</td>
+<td>${rp(x.harga)}</td>
+<td>
+<span class="action" onclick="editMaterial(${i})">✏️</span>
+<span class="action" onclick="hapusMaterial(${i})">🗑️</span>
+</td>
+</tr>
+`;
+
 });
 
-function rupiah(x){
-    return Number(x).toLocaleString("id-ID");
 }
 
-function renderTable(filter=""){
-    matBody.innerHTML = "";
+window.addMaterial = function(){
 
-    let no = 1;
+let nama = prompt("Nama Material:");
+if(!nama) return;
 
-    materials
-    .filter(x => x.nama.toLowerCase().includes(filter.toLowerCase()))
-    .forEach((m,i)=>{
+let satuan = prompt("Satuan:");
+if(!satuan) return;
 
-        matBody.innerHTML += `
-        <tr>
-            <td>${no++}</td>
-            <td>${m.nama}</td>
-            <td>${m.satuan}</td>
-            <td>${rupiah(m.harga)}</td>
-            <td>
-                <input type="number" min="0" value="0" class="qty"
-                data-harga="${m.harga}"
-                oninput="hitungTotal()">
-            </td>
-            <td class="lineTotal">0</td>
-        </tr>
-        `;
-    });
+let harga = prompt("Harga:");
+if(harga===null) return;
 
-    hitungTotal();
+materials.push({
+nama:nama,
+satuan:satuan,
+harga:Number(harga)
+});
+
+saveData();
+render(search.value);
+
 }
 
-window.hitungTotal = function(){
+window.editMaterial = function(i){
 
-    let qty = document.querySelectorAll(".qty");
-    let line = document.querySelectorAll(".lineTotal");
+let x = materials[i];
 
-    let total = 0;
+let nama = prompt("Nama Material:", x.nama);
+if(!nama) return;
 
-    qty.forEach((q,i)=>{
+let satuan = prompt("Satuan:", x.satuan);
+if(!satuan) return;
 
-        let harga = Number(q.dataset.harga);
-        let jumlah = Number(q.value);
-        let sub = harga * jumlah;
+let harga = prompt("Harga:", x.harga);
+if(harga===null) return;
 
-        line[i].innerText = rupiah(sub);
+materials[i] = {
+nama:nama,
+satuan:satuan,
+harga:Number(harga)
+};
 
-        total += sub;
-    });
+saveData();
+render(search.value);
 
-    grandTotal.innerText = rupiah(total);
 }
 
-window.saveMaterial = function(){
+window.hapusMaterial = function(i){
 
-    let idx = ticketSelect.value;
-    let data = JSON.parse(localStorage.getItem("tickets")) || [];
+if(confirm("Hapus material ini?")){
 
-    let rows = document.querySelectorAll("#matBody tr");
-    let detail = [];
+materials.splice(i,1);
 
-    rows.forEach(r=>{
+saveData();
+render(search.value);
 
-        let nama = r.cells[1].innerText;
-        let satuan = r.cells[2].innerText;
-        let harga = r.cells[3].innerText.replace(/\./g,'').replace(/,/g,'');
-        let qty = r.querySelector(".qty").value;
-        let total = r.cells[5].innerText.replace(/\./g,'').replace(/,/g,'');
+}
 
-        if(Number(qty) > 0){
-            detail.push({
-                nama:nama,
-                satuan:satuan,
-                harga:Number(harga),
-                qty:Number(qty),
-                total:Number(total)
-            });
-        }
-
-    });
-
-    data[idx].material = detail;
-    data[idx].grandTotal = grandTotal.innerText;
-
-    localStorage.setItem("tickets", JSON.stringify(data));
-
-    alert("Material berhasil disimpan");
 }
 
 search.addEventListener("input", ()=>{
-    renderTable(search.value);
+render(search.value);
 });
 
-renderTable();
+render();
 
 });

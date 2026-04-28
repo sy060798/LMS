@@ -1,118 +1,49 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Material Master</title>
+<!-- BUTTON DI DASHBOARD -->
+<button onclick="openMaterialPopup()" style="padding:10px 14px;">
+  📦 Material
+</button>
 
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#f4f6f9}
+<!-- ================= POPUP ================= -->
+<div id="materialModal" style="
+display:none;
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,0.6);
+z-index:9999;
+">
 
-header{
-background:#0d47a1;
-color:#fff;
-padding:18px 25px;
-font-size:28px;
-font-weight:bold;
-}
+  <div style="
+  background:#fff;
+  width:90%;
+  max-width:900px;
+  margin:40px auto;
+  border-radius:12px;
+  padding:15px;
+  max-height:85vh;
+  overflow:auto;
+  ">
 
-nav{
-background:#1565c0;
-padding:12px;
-display:flex;
-gap:10px;
-flex-wrap:wrap;
-}
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h2>📦 Material Ticket</h2>
+      <button onclick="closeMaterialPopup()">❌</button>
+    </div>
 
-nav a{
-color:#fff;
-text-decoration:none;
-padding:10px 16px;
-border-radius:8px;
-background:rgba(255,255,255,.12);
-}
+    <hr>
 
-nav a:hover{background:rgba(255,255,255,.22)}
+    <table width="100%" border="1" style="border-collapse:collapse;margin-top:10px;">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama</th>
+          <th>Satuan</th>
+          <th>Harga</th>
+          <th>QTY</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="popupMatBody"></tbody>
+    </table>
 
-.container{padding:20px}
-
-.box{
-background:#fff;
-padding:20px;
-border-radius:14px;
-box-shadow:0 5px 14px rgba(0,0,0,.08);
-}
-
-.top{
-display:flex;
-justify-content:space-between;
-margin-bottom:15px;
-}
-
-input{
-padding:10px;
-border:1px solid #ccc;
-border-radius:8px;
-min-width:250px;
-}
-
-table{
-width:100%;
-border-collapse:collapse;
-font-size:14px;
-}
-
-th,td{
-padding:8px;
-border:1px solid #ddd;
-text-align:left;
-}
-
-th{background:#e3f2fd}
-
-</style>
-</head>
-
-<body>
-
-<header>FS Ticket DB</header>
-
-<nav>
-<a href="../index.html">Dashboard</a>
-<a href="../page/addtiket.html">Add Ticket</a>
-<a href="material.html">Material</a>
-</nav>
-
-<div class="container">
-
-<div class="box">
-
-<div class="top">
-<input type="text" id="search" placeholder="Cari Material...">
+  </div>
 </div>
-
-<table>
-<thead>
-<tr>
-<th>No</th>
-<th>Nama Material</th>
-<th>Satuan</th>
-<th>Harga</th>
-<th>QTY</th>
-<th>Total</th>
-<th>Status</th>
-</tr>
-</thead>
-
-<tbody id="matBody"></tbody>
-
-</table>
-
-</div>
-</div>
-
-<script src="./material.js"></script>
-
-</body>
-</html>

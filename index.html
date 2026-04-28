@@ -125,25 +125,10 @@ color:#fff;
 <div class="container">
 
 <div class="grid">
-<div class="card">
-<h3>Total Ticket</h3>
-<div class="num" id="totTicket">0</div>
-</div>
-
-<div class="card">
-<h3>Open Ticket</h3>
-<div class="num" id="openTicket">0</div>
-</div>
-
-<div class="card">
-<h3>Closed Ticket</h3>
-<div class="num" id="closeTicket">0</div>
-</div>
-
-<div class="card">
-<h3>Total Material</h3>
-<div class="num" id="matCount">0</div>
-</div>
+<div class="card"><h3>Total Ticket</h3><div class="num" id="totTicket">0</div></div>
+<div class="card"><h3>Open Ticket</h3><div class="num" id="openTicket">0</div></div>
+<div class="card"><h3>Closed Ticket</h3><div class="num" id="closeTicket">0</div></div>
+<div class="card"><h3>Total Material</h3><div class="num" id="matCount">0</div></div>
 </div>
 
 <div class="table-wrap">
@@ -151,7 +136,7 @@ color:#fff;
 <h2 style="margin-bottom:12px">Recent Tickets</h2>
 
 <div class="search-box">
-<input type="text" id="searchCustomer" placeholder="Cari Customer...">
+<input type="text" id="searchCustomer" placeholder="Cari Nama Project...">
 </div>
 
 <table>
@@ -176,185 +161,7 @@ color:#fff;
 </div>
 </div>
 
-<script>
-
-const data = JSON.parse(localStorage.getItem("tickets") || "[]");
-
-document.getElementById("totTicket").textContent = data.length;
-
-document.getElementById("openTicket").textContent =
-data.filter(x => x.status === "Open").length;
-
-document.getElementById("closeTicket").textContent =
-data.filter(x => x.status === "Close").length;
-
-document.getElementById("matCount").textContent =
-data.filter(x => x.material && x.material.length > 0).length;
-
-const body = document.getElementById("ticketBody");
-
-function loadTable(filter=""){
-
-let rows = data.filter(x =>
-x.customer.toLowerCase().includes(filter.toLowerCase())
-);
-
-body.innerHTML = rows.slice(-50).reverse().map((x,i)=>`
-<tr>
-<td>${i+1}</td>
-<td>${x.customer}</td>
-<td>${x.project}</td>
-<td>${x.spk}</td>
-<td>${x.tanggal}</td>
-<td>${x.city}</td>
-<td><span class="status">${x.status}</span></td>
-<td>
-<div class="aksi">
-<button class="icon-btn box-btn" onclick="openMaterial(${data.indexOf(x)})">📦</button>
-<button class="icon-btn edit-btn" onclick="editTicket(${data.indexOf(x)})">✏️</button>
-<button class="icon-btn del-btn" onclick="hapusTicket(${data.indexOf(x)})">🗑️</button>
-</div>
-</td>
-</tr>
-`).join("");
-
-}
-
-loadTable();
-
-document.getElementById("searchCustomer").addEventListener("input",function(){
-loadTable(this.value);
-});
-
-function openMaterial(i){
-location.href="material/material.html?id="+i;
-}
-
-function editTicket(i){
-
-let x = data[i];
-
-x.customer = prompt("Customer",x.customer) || x.customer;
-x.project  = prompt("Project",x.project) || x.project;
-x.spk      = prompt("SPK",x.spk) || x.spk;
-x.city     = prompt("City",x.city) || x.city;
-
-localStorage.setItem("tickets",JSON.stringify(data));
-loadTable();
-
-}
-
-function hapusTicket(i){
-
-if(confirm("Hapus ticket ini?")){
-
-data.splice(i,1);
-localStorage.setItem("tickets",JSON.stringify(data));
-
-location.reload();
-
-}
-
-}
-
-function exportExcel(){
-
-if(data.length===0){
-alert("Data kosong");
-return;
-}
-
-let csv = [];
-
-csv.push([
-"No",
-"Customer",
-"Project",
-"SPK",
-"Tanggal",
-"City",
-"Status",
-"Material",
-"Qty",
-"Harga",
-"Total"
-]);
-
-data.forEach((x,i)=>{
-
-if(x.material && x.material.length>0){
-
-x.material.forEach(m=>{
-
-let total = Number(m.qty||0) * Number(m.harga||0);
-
-csv.push([
-i+1,
-x.customer,
-x.project,
-x.spk,
-x.tanggal,
-x.city,
-x.status,
-m.nama || "",
-m.qty || 0,
-m.harga || 0,
-total
-]);
-
-});
-
-}else{
-
-csv.push([
-i+1,
-x.customer,
-x.project,
-x.spk,
-x.tanggal,
-x.city,
-x.status,
-"",
-"",
-"",
-""
-]);
-
-}
-
-});
-
-let content = csv.map(e=>e.join(",")).join("\n");
-
-let blob = new Blob(
-[content],
-{type:"text/csv;charset=utf-8;"}
-);
-
-let link = document.createElement("a");
-
-link.href = URL.createObjectURL(blob);
-link.download = "FS_Ticket_Report.csv";
-link.click();
-
-}
-
-function saveNow(){
-
-if(typeof uploadTickets==="function"){
-uploadTickets();
-}
-
-if(typeof uploadMaterial==="function"){
-uploadMaterial();
-}
-
-alert("Data berhasil disimpan ke server");
-
-}
-
-</script>
-
+<!-- HAPUS SCRIPT BESAR LAMA, CUKUP INI -->
 <script src="js/index.js"></script>
 <script src="js/addtiket.js"></script>
 <script src="material/material.js"></script>

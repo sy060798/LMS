@@ -46,14 +46,13 @@ function cleanBeforeSave(tickets){
 }
 
 /* =========================
-   SAVE SAFE
+   SAVE (MANUAL ONLY)
 ========================= */
 async function saveAll(){
 
   try {
 
     let tickets = DB.getTickets();
-
     let cleaned = cleanBeforeSave(tickets);
 
     DB.saveTickets(cleaned);
@@ -77,7 +76,8 @@ async function saveAll(){
 }
 
 /* =========================
-   LOAD SAFE (MERGE)
+   LOAD (MANUAL ONLY)
+   👉 tidak auto load biar tidak “tenggelam”
 ========================= */
 async function loadAll(){
 
@@ -92,10 +92,10 @@ async function loadAll(){
 
     let map = new Map();
 
-    // LOCAL PRIORITY (jangan hilang)
+    // LOCAL PRIORITY
     localData.forEach(t => map.set(t.id, t));
 
-    // SERVER hanya fill missing
+    // SERVER fill missing only
     serverData.forEach(t => {
       if(!map.has(t.id)){
         map.set(t.id, t);
@@ -116,35 +116,24 @@ async function loadAll(){
 }
 
 /* =========================
-   INIT
+   ❌ AUTO LOAD DIMATIKAN
+   ❌ AUTO SAVE LOOP DIMATIKAN
 ========================= */
-(async function(){
-  await loadAll();
-})();
+// (SENGAJA DIHAPUS biar manual saja)
 
 /* =========================
-   AUTO SYNC (SAFE)
+   MANUAL TRIGGER ONLY
 ========================= */
-let syncTimer;
-
-function autoSave(){
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(saveAll, 5000);
-}
-
-setInterval(saveAll, 30000);
-window.addEventListener("beforeunload", saveAll);
+window.saveNow = saveAll;
+window.loadNow = loadAll;
 
 /* =========================
-   API
+   GLOBAL API
 ========================= */
 window.FS = {
   DB,
   saveAll,
-  loadAll,
-  autoSave
+  loadAll
 };
-
-window.saveNow = saveAll;
 
 })();

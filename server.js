@@ -1,5 +1,5 @@
 /* =========================================
-   SERVER.JS - FS TICKET SYSTEM (FIXED)
+   SERVER.JS - FS TICKET SYSTEM (FINAL FIX)
 ========================================= */
 
 if (typeof SERVER_URL === "undefined") {
@@ -52,7 +52,7 @@ async function cekServer(){
 }
 
 /* ===============================
-   LOAD ALL DATA (TICKETS + MATERIAL)
+   LOAD ALL DATA
 =============================== */
 async function loadAllData(){
   try{
@@ -87,7 +87,6 @@ function getActiveTicketId(){
 
 /* ===============================
    🔥 SYNC MATERIAL → ACTIVE TICKET
-   (ONLY QTY > 0)
 =============================== */
 function syncMaterialToActiveTicket(){
 
@@ -101,10 +100,17 @@ function syncMaterialToActiveTicket(){
 
   let materials = JSON.parse(localStorage.getItem("materialMaster") || "[]");
 
-  // ONLY MATERIAL WITH QTY > 0
+  // ONLY QTY > 0
   ticket.material = materials.filter(m => Number(m.qty) > 0);
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
+}
+
+/* ===============================
+   SAVE LOCAL (ANTI LOSS)
+=============================== */
+function saveLocal(){
+  syncMaterialToActiveTicket();
 }
 
 /* ===============================
@@ -115,7 +121,6 @@ async function uploadTickets(){
   let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 
   try{
-
     await fetch(SERVER_URL + "/saveTickets",{
       method:"POST",
       headers:{
@@ -123,7 +128,6 @@ async function uploadTickets(){
       },
       body:JSON.stringify({tickets})
     });
-
   }catch(e){
     console.log(e);
   }
@@ -146,7 +150,6 @@ async function uploadMaterial(){
   if(!ticket) return;
 
   try{
-
     await fetch(SERVER_URL + "/saveMaterial",{
       method:"POST",
       headers:{
@@ -158,7 +161,6 @@ async function uploadMaterial(){
         material: ticket.material || []
       })
     });
-
   }catch(e){
     console.log(e);
   }
@@ -173,17 +175,19 @@ async function uploadMaterial(){
 })();
 
 /* ===============================
-   AUTO SYNC (BACKGROUND)
+   AUTO SYNC
 =============================== */
 setInterval(() => {
+  saveLocal();
   uploadTickets();
   uploadMaterial();
 }, 30000);
 
 /* ===============================
-   AUTO SAVE BEFORE CLOSE
+   BEFORE CLOSE
 =============================== */
 window.addEventListener("beforeunload", function(){
+  saveLocal();
   uploadTickets();
   uploadMaterial();
 });
@@ -194,10 +198,10 @@ window.addEventListener("beforeunload", function(){
 window.syncMaterialToActiveTicket = syncMaterialToActiveTicket;
 
 /* ===============================
-   SAVE BUTTON GLOBAL
+   SAVE BUTTON FIXED
 =============================== */
 window.saveNow = function(){
-  syncMaterialToActiveTicket();
+  saveLocal();          // <- penting
   uploadTickets();
   uploadMaterial();
   alert("Data berhasil sync ke server");

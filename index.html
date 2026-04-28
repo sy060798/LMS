@@ -74,9 +74,7 @@ border-radius:8px;
 cursor:pointer;
 font-weight:bold;
 }
-.btn-export:hover{
-background:#08306b;
-}
+.btn-export:hover{background:#08306b}
 
 .search-box{
 margin:15px 0;
@@ -121,6 +119,7 @@ color:#fff;
 <a href="page/addtiket.html">Add Ticket</a>
 <a href="material/material.html">Material</a>
 <a href="#" onclick="exportExcel()">Export Excel</a>
+<a href="#" onclick="saveNow()">Save</a>
 </nav>
 
 <div class="container">
@@ -170,32 +169,29 @@ color:#fff;
 </thead>
 
 <tbody id="ticketBody"></tbody>
-
 </table>
 
-<button class="btn-export" onclick="exportExcel()">
-Export Excel
-</button>
+<button class="btn-export" onclick="exportExcel()">Export Excel</button>
 
 </div>
 </div>
 
 <script>
 
-const data = JSON.parse(localStorage.getItem('tickets') || '[]');
+const data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
-document.getElementById('totTicket').textContent = data.length;
+document.getElementById("totTicket").textContent = data.length;
 
-document.getElementById('openTicket').textContent =
-data.filter(x => x.status === 'Open').length;
+document.getElementById("openTicket").textContent =
+data.filter(x => x.status === "Open").length;
 
-document.getElementById('closeTicket').textContent =
-data.filter(x => x.status === 'Close').length;
+document.getElementById("closeTicket").textContent =
+data.filter(x => x.status === "Close").length;
 
-document.getElementById('matCount').textContent =
+document.getElementById("matCount").textContent =
 data.filter(x => x.material && x.material.length > 0).length;
 
-const body = document.getElementById('ticketBody');
+const body = document.getElementById("ticketBody");
 
 function loadTable(filter=""){
 
@@ -220,7 +216,7 @@ body.innerHTML = rows.slice(-50).reverse().map((x,i)=>`
 </div>
 </td>
 </tr>
-`).join('');
+`).join("");
 
 }
 
@@ -251,33 +247,25 @@ loadTable();
 function hapusTicket(i){
 
 if(confirm("Hapus ticket ini?")){
+
 data.splice(i,1);
 localStorage.setItem("tickets",JSON.stringify(data));
 
-document.getElementById('totTicket').textContent = data.length;
+location.reload();
 
-document.getElementById('openTicket').textContent =
-data.filter(x => x.status === 'Open').length;
-
-document.getElementById('closeTicket').textContent =
-data.filter(x => x.status === 'Close').length;
-
-document.getElementById('matCount').textContent =
-data.filter(x => x.material && x.material.length > 0).length;
-
-loadTable();
 }
 
 }
 
 function exportExcel(){
 
-if(data.length === 0){
+if(data.length===0){
 alert("Data kosong");
 return;
 }
 
 let csv = [];
+
 csv.push([
 "No",
 "Customer",
@@ -285,10 +273,21 @@ csv.push([
 "SPK",
 "Tanggal",
 "City",
-"Status"
+"Status",
+"Material",
+"Qty",
+"Harga",
+"Total"
 ]);
 
 data.forEach((x,i)=>{
+
+if(x.material && x.material.length>0){
+
+x.material.forEach(m=>{
+
+let total = Number(m.qty||0) * Number(m.harga||0);
+
 csv.push([
 i+1,
 x.customer,
@@ -296,11 +295,36 @@ x.project,
 x.spk,
 x.tanggal,
 x.city,
-x.status
+x.status,
+m.nama || "",
+m.qty || 0,
+m.harga || 0,
+total
 ]);
+
 });
 
-let content = csv.map(e => e.join(",")).join("\n");
+}else{
+
+csv.push([
+i+1,
+x.customer,
+x.project,
+x.spk,
+x.tanggal,
+x.city,
+x.status,
+"",
+"",
+"",
+""
+]);
+
+}
+
+});
+
+let content = csv.map(e=>e.join(",")).join("\n");
 
 let blob = new Blob(
 [content],
@@ -310,10 +334,23 @@ let blob = new Blob(
 let link = document.createElement("a");
 
 link.href = URL.createObjectURL(blob);
-
 link.download = "FS_Ticket_Report.csv";
-
 link.click();
+
+}
+
+function saveNow(){
+
+if(typeof uploadTickets==="function"){
+uploadTickets();
+}
+
+if(typeof uploadMaterial==="function"){
+uploadMaterial();
+}
+
+alert("Data berhasil disimpan ke server");
+
 }
 
 </script>
@@ -321,6 +358,7 @@ link.click();
 <script src="js/index.js"></script>
 <script src="js/addtiket.js"></script>
 <script src="material/material.js"></script>
+<script src="Server.js"></script>
 
 </body>
 </html>

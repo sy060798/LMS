@@ -6,7 +6,7 @@
 const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   LOCAL HELPERS
+   DB HELPER
 ========================= */
 const DB = {
   getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
@@ -16,15 +16,14 @@ const DB = {
 };
 
 /* =========================
-   SYNC MATERIAL KE TICKET
-   (CORE LOGIC)
+   SYNC MATERIAL → TICKET (SPK BASED)
 ========================= */
 function syncMaterial(materials){
 
   let tickets = DB.getTickets();
-  let id = DB.getActiveId();
+  let spk = DB.getActiveId();
 
-  let ticket = tickets.find(t => t.id == id);
+  let ticket = tickets.find(t => t.spk == spk);
   if(!ticket) return;
 
   ticket.material = (materials || []).filter(m => Number(m.qty) > 0);
@@ -40,7 +39,7 @@ function saveLocal(materials){
 }
 
 /* =========================
-   PUSH KE SERVER (TICKETS + MATERIAL)
+   PUSH SERVER
 ========================= */
 async function pushToServer(){
 
@@ -59,7 +58,7 @@ async function pushToServer(){
 }
 
 /* =========================
-   LOAD SERVER DATA
+   PULL SERVER
 ========================= */
 async function pullFromServer(){
 
@@ -78,7 +77,7 @@ async function pullFromServer(){
 }
 
 /* =========================
-   AUTO INIT
+   INIT
 ========================= */
 (async function(){
   await pullFromServer();
@@ -92,14 +91,14 @@ setInterval(() => {
 }, 30000);
 
 /* =========================
-   BEFORE CLOSE SAVE
+   CLOSE SAVE
 ========================= */
 window.addEventListener("beforeunload", function(){
   pushToServer();
 });
 
 /* =========================
-   EXPOSE GLOBAL
+   GLOBAL API
 ========================= */
 window.FS = {
   syncMaterial,

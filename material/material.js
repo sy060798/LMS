@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
 /* =========================
-   POPUP CREATE
+   POPUP
 ========================= */
 let popup = document.getElementById("materialPopup");
 
@@ -49,27 +49,21 @@ if(!popup){
 }
 
 /* =========================
-   MASTER DATA (FULL kamu)
+   MASTER DATA
 ========================= */
 const MASTER_MATERIAL = [
   { nama: "Kabel Udara ADSS Span 100 12 Core", satuan: "Meter", harga: 10000 },
   { nama: "Kabel Udara ADSS Span 100 24 Core", satuan: "Meter", harga: 12000 },
   { nama: "Kabel Udara ADSS Span 100 48 Core", satuan: "Meter", harga: 17500 },
   { nama: "Kabel Udara ADSS Span 100 96 Core", satuan: "", harga: 20000 },
-  { nama: "Join Closure Dome 12 Core", satuan: "Unit", harga: 750000 },
-  { nama: "Join Closure Dome 48 Core + Label ID", satuan: "Set", harga: 1250000 },
-  { nama: "Join Closure Dome 96 Core", satuan: "Set", harga: 2500000 },
-  { nama: "Splitter 1:2", satuan: "Unit", harga: 350000 },
-  { nama: "Splitter 1:4", satuan: "Unit", harga: 450000 },
   { nama: "Splitter 1:8", satuan: "Unit", harga: 600000 },
-  { nama: "Splitter 1:16", satuan: "Unit", harga: 800000 },
   { nama: "Drop Wire Furukawa", satuan: "Meter", harga: 5000 },
   { nama: "Kabel LAN", satuan: "Unit", harga: 5000 },
   { nama: "Lakban", satuan: "Pcs", harga: 10000 }
 ];
 
 /* =========================
-   DB LOCAL
+   DB
 ========================= */
 const DB = {
   get: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
@@ -77,7 +71,7 @@ const DB = {
 };
 
 /* =========================
-   GET ACTIVE TICKET
+   GET TICKET
 ========================= */
 function getTicket(){
   let id = localStorage.getItem("activeTicketId");
@@ -88,9 +82,10 @@ function getTicket(){
    STATE
 ========================= */
 let materials = [];
+let saveTimer;
 
 /* =========================
-   OPEN POPUP (DARI DASHBOARD)
+   OPEN POPUP
 ========================= */
 window.openMaterialPopup = function(){
 
@@ -112,37 +107,44 @@ window.openMaterialPopup = function(){
 };
 
 /* =========================
-   CLOSE
+   CLOSE POPUP (AUTO SAVE)
 ========================= */
 window.closeMaterialPopup = function(){
+  commit(); // 🔥 penting biar tidak hilang
   popup.style.display = "none";
 };
 
 /* =========================
-   SAVE KE TICKET
+   SAVE (DEBOUNCE SAFE)
 ========================= */
 function commit(){
 
-  let tickets = DB.get();
-  let id = localStorage.getItem("activeTicketId");
+  clearTimeout(saveTimer);
 
-  let t = tickets.find(x => x.id == id);
-  if(!t) return;
+  saveTimer = setTimeout(() => {
 
-  t.material = materials
-    .filter(m => Number(m.qty) > 0)
-    .map(m => ({
-      nama: m.nama,
-      satuan: m.satuan,
-      harga: m.harga,
-      qty: Number(m.qty)
-    }));
+    let tickets = DB.get();
+    let id = localStorage.getItem("activeTicketId");
 
-  DB.save(tickets);
+    let t = tickets.find(x => x.id == id);
+    if(!t) return;
+
+    t.material = materials
+      .filter(m => Number(m.qty) > 0)
+      .map(m => ({
+        nama: m.nama,
+        satuan: m.satuan,
+        harga: Number(m.harga),
+        qty: Number(m.qty)
+      }));
+
+    DB.save(tickets);
+
+  }, 300);
 }
 
 /* =========================
-   RENDER TABLE
+   RENDER
 ========================= */
 function render(filter=""){
 

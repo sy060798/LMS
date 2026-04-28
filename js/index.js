@@ -111,10 +111,6 @@ loadTable(search.value);
 /* =========================
    EXPORT
 ========================= */
-// ================================
-// EXPORT EXCEL PRO BOQ (.xlsx)
-// ================================
-
 window.exportExcel = function(){
 
 let data = JSON.parse(localStorage.getItem("tickets") || "[]");
@@ -125,19 +121,15 @@ return;
 }
 
 /* =========================
-   AMBIL MATERIAL UNIQUE
+   AMBIL MATERIAL UNIQUE (qty > 0)
 ========================= */
-let allMat = [];
-
-data.forEach(t=>{
-(t.material || []).forEach(m=>{
-if(Number(m.qty) > 0){
-if(!allMat.includes(m.nama)){
-allMat.push(m.nama);
-}
-}
-});
-});
+let allMat = [...new Set(
+data.flatMap(t =>
+(t.material || [])
+.filter(m => Number(m.qty) > 0)
+.map(m => m.nama)
+)
+)];
 
 /* =========================
    SHEET DATA
@@ -162,7 +154,7 @@ row2.push("Grand Total");
 ws_data.push(row2);
 
 /* =========================
-   DATA
+   DATA ROW
 ========================= */
 data.forEach((t,i)=>{
 
@@ -179,7 +171,10 @@ t.status || ""
 let grand = 0;
 
 allMat.forEach(nama=>{
-let found = (t.material || []).find(x=>x.nama === nama);
+
+let found = (t.material || []).find(x =>
+x.nama === nama && Number(x.qty) > 0
+);
 
 if(found){
 row.push(Number(found.qty || 0));
@@ -187,6 +182,7 @@ grand += Number(found.qty || 0) * Number(found.harga || 0);
 }else{
 row.push("");
 }
+
 });
 
 row.push(grand);
@@ -216,23 +212,24 @@ ws["!merges"] = [
 ws["!cols"] = Array(7 + allMat.length + 1).fill({wch:20});
 
 /* =========================
-   STYLE
+   STYLE FUNCTION
 ========================= */
-function style(cell,bg,bold){
+function style(cell,bg,bold,textColor){
 
 if(!ws[cell]) return;
 
 ws[cell].s = {
 font:{
 bold: bold || false,
-color:{rgb:"FFFFFF"}
+color:{rgb:textColor || "FFFFFF"}
 },
 fill:{
 fgColor:{rgb:bg}
 },
 alignment:{
 horizontal:"center",
-vertical:"center"
+vertical:"center",
+wrapText:true
 },
 border:{
 top:{style:"thin"},
@@ -244,21 +241,37 @@ right:{style:"thin"}
 
 }
 
-/* HEADER STYLE */
+/* =========================
+   HEADER STYLE (BIRU TUA)
+========================= */
 for(let c=0;c<7+allMat.length+1;c++){
+
 let col = XLSX.utils.encode_col(c);
-style(col+"1","1565C0",true);
-style(col+"2","1976D2",true);
+
+/* DARK BLUE HEADER */
+style(col+"1","0D47A1",true,"FFFFFF");
+style(col+"2","1565C0",true,"FFFFFF");
+
 }
 
-/* DATA STYLE */
+/* =========================
+   DATA STYLE (COKLAT MATERIAL AREA)
+========================= */
 for(let r=3;r<=ws_data.length;r++){
+
 for(let c=0;c<7+allMat.length+1;c++){
 
 let cell = XLSX.utils.encode_col(c)+r;
 
 if(ws[cell]){
+
+let isMaterial = c >= 7 && c < (7 + allMat.length);
+
+/* WARNA COKLAT UNTUK KOLOM MATERIAL */
+let bg = isMaterial ? "D7B899" : null;
+
 ws[cell].s = {
+fill: bg ? { fgColor:{rgb:bg} } : undefined,
 alignment:{
 horizontal: c>=7 ? "center" : "left",
 vertical:"center"
@@ -270,12 +283,16 @@ left:{style:"thin"},
 right:{style:"thin"}
 }
 };
+
 }
 
 }
+
 }
 
-/* FORMAT GRAND TOTAL */
+/* =========================
+   FORMAT GRAND TOTAL
+========================= */
 let lastCol = XLSX.utils.encode_col(7+allMat.length);
 
 for(let r=3;r<=ws_data.length;r++){
@@ -286,26 +303,12 @@ ws[cell].z = '#,##0';
 }
 
 /* =========================
-   EXPORT FILE
+   EXPORT
 ========================= */
 XLSX.utils.book_append_sheet(wb, ws, "Laporan");
 XLSX.writeFile(wb, "Laporan_BOQ_Professional.xlsx");
 
 };
-
-
-/* =========================
-   BUTTON EVENT FIX
-========================= */
-document.addEventListener("DOMContentLoaded", function(){
-
-let btn = document.getElementById("btnExport");
-
-if(btn){
-btn.addEventListener("click", exportExcel);
-}
-
-});
 /* =========================
    SAVE SERVER
 ========================= */

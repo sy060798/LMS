@@ -209,12 +209,30 @@ search.addEventListener("input", function(){
 render(this.value);
 });
 
-/* =========================
-   AUTO SAVE SAAT CLOSE
-========================= */
 window.addEventListener("beforeunload", function(){
-saveData();
-syncToTicket();
+
+// simpan local dulu
+if(typeof saveData === "function") saveData();
+
+// ambil material terbaru
+let material = JSON.parse(localStorage.getItem("materialMaster") || "[]");
+
+// ambil tickets juga (biar tetap konsisten per ticket)
+let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
+
+// kirim ke server (AMAN SAAT CLOSE)
+if(typeof SERVER_URL !== "undefined"){
+
+navigator.sendBeacon(
+SERVER_URL + "/saveSync",
+JSON.stringify({
+material: material,
+tickets: tickets
+})
+);
+
+}
+
 });
 
 /* =========================

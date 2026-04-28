@@ -8,15 +8,31 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:Arial,sans-serif;background:#f4f6f9}
-header{background:#0d47a1;color:#fff;padding:18px 25px;font-size:28px;font-weight:bold}
-nav{background:#1565c0;padding:12px;display:flex;gap:10px;flex-wrap:wrap}
+
+header{
+background:#0d47a1;
+color:#fff;
+padding:18px 25px;
+font-size:28px;
+font-weight:bold;
+}
+
+nav{
+background:#1565c0;
+padding:12px;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
 nav a{
 color:#fff;
 text-decoration:none;
 padding:10px 16px;
 border-radius:8px;
-background:rgba(255,255,255,.12)
+background:rgba(255,255,255,.12);
 }
+
 nav a:hover{background:rgba(255,255,255,.22)}
 
 .container{padding:20px}
@@ -25,14 +41,12 @@ nav a:hover{background:rgba(255,255,255,.22)}
 background:#fff;
 padding:20px;
 border-radius:14px;
-box-shadow:0 5px 14px rgba(0,0,0,.08)
+box-shadow:0 5px 14px rgba(0,0,0,.08);
 }
 
 .top{
 display:flex;
-gap:10px;
 justify-content:space-between;
-flex-wrap:wrap;
 margin-bottom:15px;
 }
 
@@ -42,18 +56,6 @@ border:1px solid #ccc;
 border-radius:8px;
 min-width:250px;
 }
-
-button{
-padding:10px 14px;
-border:none;
-background:#1565c0;
-color:#fff;
-border-radius:8px;
-cursor:pointer;
-font-weight:bold;
-}
-
-button:hover{background:#0d47a1}
 
 table{
 width:100%;
@@ -69,11 +71,6 @@ text-align:left;
 
 th{background:#e3f2fd}
 
-.action{
-cursor:pointer;
-font-size:18px;
-margin-right:8px;
-}
 </style>
 </head>
 
@@ -93,8 +90,6 @@ margin-right:8px;
 
 <div class="top">
 <input type="text" id="search" placeholder="Cari Material...">
-<button onclick="addMaterial()">+ Tambah Material</button>
-<button onclick="forceSave()">💾 Save</button>
 </div>
 
 <table>
@@ -105,8 +100,8 @@ margin-right:8px;
 <th>Satuan</th>
 <th>Harga</th>
 <th>QTY</th>
-<th>Total Harga</th>
-<th>Aksi</th>
+<th>Total</th>
+<th>Status</th>
 </tr>
 </thead>
 

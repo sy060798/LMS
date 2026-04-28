@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Material Ticket - FS Ticket DB</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+}
+
+header{
+    background:#0d47a1;
+    color:#fff;
+    padding:18px 25px;
+    font-size:28px;
+    font-weight:bold;
+}
+
+nav{
+    background:#1565c0;
+    padding:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+nav a{
+    color:#fff;
+    text-decoration:none;
+    padding:10px 16px;
+    border-radius:8px;
+    background:rgba(255,255,255,.12);
+}
+
+nav a:hover{
+    background:rgba(255,255,255,.22);
+}
+
+.container{
+    max-width:1400px;
+    margin:auto;
+    padding:25px;
+}
+
+.box{
+    background:#fff;
+    border-radius:14px;
+    padding:25px;
+    box-shadow:0 5px 14px rgba(0,0,0,.08);
+}
+
+.title{
+    font-size:26px;
+    font-weight:bold;
+    color:#0d47a1;
+    margin-bottom:20px;
+}
+
+.row{
+    display:grid;
+    grid-template-columns:1fr 250px;
+    gap:15px;
+    margin-bottom:20px;
+}
+
+input,select{
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:15px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+
+th,td{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    text-align:left;
+}
+
+th{
+    background:#e3f2fd;
+}
+
+.qty{
+    width:80px;
+    padding:8px;
+}
+
+.total-box{
+    margin-top:20px;
+    text-align:right;
+    font-size:24px;
+    font-weight:bold;
+    color:#0d47a1;
+}
+
+button{
+    margin-top:20px;
+    border:none;
+    background:#1565c0;
+    color:#fff;
+    padding:12px 22px;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+button:hover{
+    background:#0d47a1;
+}
+</style>
+</head>
+
+<body>
+
+<header>FS Ticket DB</header>
+
+<nav>
+<a href="../index.html">Dashboard</a>
+<a href="../page/addtiket.html">Add Ticket</a>
+<a href="material.html">Material</a>
+<a href="#">Export Excel</a>
+</nav>
+
+<div class="container">
+
+<div class="box">
+
+<div class="title">Material Used</div>
+
+<div class="row">
+<select id="ticketSelect"></select>
+<input type="text" id="search" placeholder="Cari Material...">
+</div>
+
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>Nama Material</th>
+<th>Satuan</th>
+<th>Harga</th>
+<th>Qty</th>
+<th>Total</th>
+</tr>
+</thead>
+
+<tbody id="matBody"></tbody>
+
+</table>
+
+<div class="total-box">
+Grand Total : Rp <span id="grandTotal">0</span>
+</div>
+
+<button onclick="saveMaterial()">Simpan Material</button>
+
+</div>
+</div>
+
+<script src="../js/material.js"></script>
+
+</body>
+</html>

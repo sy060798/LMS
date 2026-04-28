@@ -3,6 +3,8 @@ document.addEventListener("DOMContentLoaded", function(){
 const matBody = document.getElementById("matBody");
 const search = document.getElementById("search");
 
+if(!matBody) return;
+
 /* =========================
    LOAD MATERIAL
 ========================= */
@@ -18,20 +20,18 @@ materials = [
 {nama:"OTB 12 Core",satuan:"unit",harga:1100000,qty:0},
 {nama:"Transportasi",satuan:"lot",harga:250000,qty:0}
 ];
-
 saveData();
 }
 
 /* =========================
-   SAVE LOCAL
+   SAVE
 ========================= */
 function saveData(){
 localStorage.setItem("materialMaster", JSON.stringify(materials));
 }
 
 /* =========================
-   SYNC KE TICKET (FIXED)
-   ONLY QTY > 0
+   SYNC KE TICKET (SAFE)
 ========================= */
 function syncToTicket(){
 
@@ -43,20 +43,10 @@ if(!activeId) return;
 let t = tickets.find(x => x.id == activeId);
 if(!t) return;
 
-/* 🔥 ONLY QTY > 0 */
 t.material = materials.filter(m => Number(m.qty) > 0);
 
 localStorage.setItem("tickets", JSON.stringify(tickets));
 }
-
-/* =========================
-   FORCE SAVE
-========================= */
-window.forceSave = function(){
-saveData();
-syncToTicket();
-alert("Data berhasil disimpan!");
-};
 
 /* =========================
    FORMAT
@@ -66,46 +56,45 @@ return Number(x).toLocaleString("id-ID");
 }
 
 /* =========================
-   RENDER
+   RENDER (FIX INDEX BUG)
 ========================= */
 function render(filter){
 
 matBody.innerHTML = "";
 
-let list = materials;
-
-if(filter){
-list = materials.filter(x =>
-x.nama.toLowerCase().includes(filter.toLowerCase())
+let list = materials
+.map((m, idx) => ({...m, _idx: idx}))
+.filter(x =>
+!filter || x.nama.toLowerCase().includes(filter.toLowerCase())
 );
-}
 
-for(let i=0;i<list.length;i++){
+list.forEach((item,i)=>{
 
-let total = list[i].harga * (list[i].qty || 0);
+let total = Number(item.harga) * Number(item.qty || 0);
 
 matBody.innerHTML += `
 <tr>
 <td>${i+1}</td>
-<td>${list[i].nama}</td>
-<td>${list[i].satuan}</td>
-<td>${rp(list[i].harga)}</td>
+<td>${item.nama}</td>
+<td>${item.satuan}</td>
+<td>${rp(item.harga)}</td>
 
 <td>
-<input type="number" value="${list[i].qty || 0}" min="0"
+<input type="number" value="${item.qty || 0}" min="0"
 style="width:70px;padding:5px"
-onchange="ubahQty(${i},this.value)">
+onchange="ubahQty(${item._idx},this.value)">
 </td>
 
 <td>${rp(total)}</td>
 
 <td>
-<span class="action" onclick="editMaterial(${i})">✏️</span>
-<span class="action" onclick="hapusMaterial(${i})">🗑️</span>
+<span class="action" onclick="editMaterial(${item._idx})">✏️</span>
+<span class="action" onclick="hapusMaterial(${item._idx})">🗑️</span>
 </td>
 </tr>
 `;
-}
+
+});
 
 }
 
@@ -119,7 +108,7 @@ if(!materials[i]) return;
 materials[i].qty = Number(val);
 
 saveData();
-render(search.value);
+render(search?.value || "");
 syncToTicket();
 
 };
@@ -146,7 +135,7 @@ qty:0
 });
 
 saveData();
-render(search.value);
+render(search?.value || "");
 syncToTicket();
 
 };
@@ -171,7 +160,7 @@ if(harga===null) return;
 materials[i] = { ...x, nama, satuan, harga:Number(harga) };
 
 saveData();
-render(search.value);
+render(search?.value || "");
 syncToTicket();
 
 };
@@ -186,7 +175,7 @@ if(!materials[i]) return;
 if(confirm("Hapus material ini?")){
 materials.splice(i,1);
 saveData();
-render(search.value);
+render(search?.value || "");
 syncToTicket();
 }
 
@@ -202,14 +191,16 @@ render(this.value);
 }
 
 /* =========================
-   AUTO SAVE CLOSE (SAFE)
+   CLOSE SAVE SAFE
 ========================= */
 window.addEventListener("beforeunload", function(){
 
 try{
+
 saveData();
 syncToTicket();
 
+if(typeof SERVER_URL !== "undefined"){
 navigator.sendBeacon(
 SERVER_URL + "/saveSync",
 JSON.stringify({
@@ -217,6 +208,7 @@ material: materials.filter(m => Number(m.qty) > 0),
 tickets: JSON.parse(localStorage.getItem("tickets") || "[]")
 })
 );
+}
 
 }catch(e){}
 

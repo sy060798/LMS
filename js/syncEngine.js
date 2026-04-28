@@ -16,21 +16,20 @@ const DB = {
 };
 
 /* =========================
-   GET ACTIVE TICKET
+   GET ACTIVE
 ========================= */
 function getActiveTicket(){
   return DB.getTickets().find(t => t.id == DB.getActiveSpk());
 }
 
 /* =========================
-   CLEAN MATERIAL (ONLY QTY > 0)
+   CLEAN ONLY BEFORE SAVE
 ========================= */
-function cleanMaterials(tickets){
+function cleanBeforeSave(tickets){
 
   return tickets.map(t => {
 
     if(Array.isArray(t.material)){
-
       t.material = t.material
         .filter(m => Number(m.qty) > 0)
         .map(m => ({
@@ -39,15 +38,15 @@ function cleanMaterials(tickets){
           harga: Number(m.harga || 0),
           qty: Number(m.qty || 0)
         }));
-
     }
 
     return t;
   });
+
 }
 
 /* =========================
-   🔥 SAVE ALL (LOCAL + SERVER)
+   SAVE ALL
 ========================= */
 async function saveAll(){
 
@@ -55,34 +54,31 @@ async function saveAll(){
 
     let tickets = DB.getTickets();
 
-    // clean material
-    tickets = cleanMaterials(tickets);
+    // ONLY CLEAN BEFORE SAVE
+    let cleaned = cleanBeforeSave(tickets);
 
-    // save local
-    DB.saveTickets(tickets);
+    DB.saveTickets(cleaned);
 
-    // push server
     await fetch(SERVER_URL + "/api/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "LMS",
-        data: tickets
+        data: cleaned
       })
     });
 
-    // trigger UI update
     window.dispatchEvent(new Event("ticketsUpdated"));
 
-    console.log("✔ SAVE SUCCESS");
+    console.log("✔ SAVE OK");
 
   } catch (e) {
-    console.log("❌ SAVE ERROR", e);
+    console.log("SAVE ERROR", e);
   }
 }
 
 /* =========================
-   🔥 LOAD FROM SERVER
+   LOAD SERVER (FULL DATA)
 ========================= */
 async function loadAll(){
 
@@ -93,46 +89,41 @@ async function loadAll(){
 
     if(Array.isArray(data)){
 
-      // clean data server juga
-      data = cleanMaterials(data);
-
-      // save ke local
+      // ❗JANGAN DI CLEAN
       DB.saveTickets(data);
 
-      // trigger UI update
       window.dispatchEvent(new Event("ticketsUpdated"));
 
-      console.log("✔ LOAD SUCCESS");
+      console.log("✔ LOAD OK");
 
     }
 
   } catch (e) {
-    console.log("❌ LOAD ERROR", e);
+    console.log("LOAD ERROR", e);
   }
 }
 
 /* =========================
-   AUTO INIT LOAD
+   INIT
 ========================= */
 (async function(){
   await loadAll();
 })();
 
 /* =========================
-   AUTO SYNC (OPTIONAL)
+   AUTO SYNC
 ========================= */
 setInterval(saveAll, 30000);
 
 window.addEventListener("beforeunload", saveAll);
 
 /* =========================
-   GLOBAL API
+   API
 ========================= */
 window.FS = {
   DB,
   saveAll,
-  loadAll,
-  cleanMaterials
+  loadAll
 };
 
 window.saveNow = saveAll;

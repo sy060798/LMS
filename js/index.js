@@ -113,11 +113,9 @@ loadTable(search.value);
 ========================= */
 // ================================
 // EXPORT EXCEL PRO BOQ (.xlsx)
-// WAJIB tambah CDN SheetJS di index.html:
-// <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 // ================================
 
-function exportExcel(){
+window.exportExcel = function(){
 
 let data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
@@ -127,13 +125,13 @@ return;
 }
 
 /* =========================
-   AMBIL SEMUA MATERIAL QTY > 0
+   AMBIL MATERIAL UNIQUE
 ========================= */
 let allMat = [];
 
 data.forEach(t=>{
 (t.material || []).forEach(m=>{
-if(Number(m.qty)>0){
+if(Number(m.qty) > 0){
 if(!allMat.includes(m.nama)){
 allMat.push(m.nama);
 }
@@ -142,28 +140,20 @@ allMat.push(m.nama);
 });
 
 /* =========================
-   BUAT SHEET DATA
+   SHEET DATA
 ========================= */
 let ws_data = [];
 
-/* HEADER BARIS 1 */
-let row1 = [
+/* HEADER 1 */
+ws_data.push([
 "DATA TICKET","","","","","","",
-"MATERIAL","","","","","","","","","","",
+"MATERIAL","","","","","","","","",
 "TOTAL"
-];
+]);
 
-ws_data.push(row1);
-
-/* HEADER BARIS 2 */
+/* HEADER 2 */
 let row2 = [
-"No",
-"Customer",
-"Project",
-"SPK",
-"Tanggal",
-"City",
-"Status"
+"No","Customer","Project","SPK","Tanggal","City","Status"
 ];
 
 row2 = row2.concat(allMat);
@@ -171,7 +161,9 @@ row2.push("Grand Total");
 
 ws_data.push(row2);
 
-/* DATA */
+/* =========================
+   DATA
+========================= */
 data.forEach((t,i)=>{
 
 let row = [
@@ -187,16 +179,14 @@ t.status || ""
 let grand = 0;
 
 allMat.forEach(nama=>{
-
-let found = (t.material || []).find(x=>x.nama===nama);
+let found = (t.material || []).find(x=>x.nama === nama);
 
 if(found){
-row.push(Number(found.qty||0));
-grand += Number(found.qty||0) * Number(found.harga||0);
+row.push(Number(found.qty || 0));
+grand += Number(found.qty || 0) * Number(found.harga || 0);
 }else{
 row.push("");
 }
-
 });
 
 row.push(grand);
@@ -206,121 +196,116 @@ ws_data.push(row);
 });
 
 /* =========================
-   CREATE WORKBOOK
+   WORKBOOK
 ========================= */
 let wb = XLSX.utils.book_new();
 let ws = XLSX.utils.aoa_to_sheet(ws_data);
 
 /* =========================
-   MERGE CELL
+   MERGE HEADER
 ========================= */
 ws["!merges"] = [
-{ s:{r:0,c:0}, e:{r:0,c:6} }, // DATA TICKET
-{ s:{r:0,c:7}, e:{r:0,c:6+allMat.length} }, // MATERIAL
+{ s:{r:0,c:0}, e:{r:0,c:6} },
+{ s:{r:0,c:7}, e:{r:0,c:6+allMat.length} },
 { s:{r:0,c:7+allMat.length}, e:{r:0,c:7+allMat.length} }
 ];
 
 /* =========================
-   AUTO WIDTH
+   WIDTH
 ========================= */
-let cols = [];
-
-for(let i=0;i<7+allMat.length+1;i++){
-cols.push({wch:22});
-}
-
-ws["!cols"] = cols;
+ws["!cols"] = Array(7 + allMat.length + 1).fill({wch:20});
 
 /* =========================
    STYLE
 ========================= */
-function setStyle(cell,fill,bold){
+function style(cell,bg,bold){
 
 if(!ws[cell]) return;
 
 ws[cell].s = {
 font:{
-bold:bold || false,
+bold: bold || false,
 color:{rgb:"FFFFFF"}
 },
 fill:{
-fgColor:{rgb:fill}
+fgColor:{rgb:bg}
 },
 alignment:{
 horizontal:"center",
-vertical:"center",
-wrapText:true
+vertical:"center"
 },
 border:{
-top:{style:"thin",color:{rgb:"000000"}},
-bottom:{style:"thin",color:{rgb:"000000"}},
-left:{style:"thin",color:{rgb:"000000"}},
-right:{style:"thin",color:{rgb:"000000"}}
+top:{style:"thin"},
+bottom:{style:"thin"},
+left:{style:"thin"},
+right:{style:"thin"}
 }
 };
 
 }
 
-/* BARIS HEADER BIRU */
+/* HEADER STYLE */
 for(let c=0;c<7+allMat.length+1;c++){
-
 let col = XLSX.utils.encode_col(c);
-
-setStyle(col+"1","1565C0",true);
-setStyle(col+"2","1976D2",true);
-
+style(col+"1","1565C0",true);
+style(col+"2","1976D2",true);
 }
 
-/* DATA BORDER */
+/* DATA STYLE */
 for(let r=3;r<=ws_data.length;r++){
-
 for(let c=0;c<7+allMat.length+1;c++){
 
 let cell = XLSX.utils.encode_col(c)+r;
 
 if(ws[cell]){
-
 ws[cell].s = {
-border:{
-top:{style:"thin",color:{rgb:"CCCCCC"}},
-bottom:{style:"thin",color:{rgb:"CCCCCC"}},
-left:{style:"thin",color:{rgb:"CCCCCC"}},
-right:{style:"thin",color:{rgb:"CCCCCC"}}
-},
 alignment:{
-vertical:"center",
-horizontal:c>=7?"center":"left"
+horizontal: c>=7 ? "center" : "left",
+vertical:"center"
+},
+border:{
+top:{style:"thin"},
+bottom:{style:"thin"},
+left:{style:"thin"},
+right:{style:"thin"}
 }
 };
-
 }
 
 }
-
 }
 
-/* FORMAT RUPIAH GRAND TOTAL */
-for(let r=3;r<=ws_data.length;r++){
-
+/* FORMAT GRAND TOTAL */
 let lastCol = XLSX.utils.encode_col(7+allMat.length);
-let cell = lastCol + r;
 
+for(let r=3;r<=ws_data.length;r++){
+let cell = lastCol + r;
 if(ws[cell]){
 ws[cell].z = '#,##0';
 }
-
 }
 
 /* =========================
-   APPEND
+   EXPORT FILE
 ========================= */
 XLSX.utils.book_append_sheet(wb, ws, "Laporan");
+XLSX.writeFile(wb, "Laporan_BOQ_Professional.xlsx");
 
-/* DOWNLOAD */
-XLSX.writeFile(wb,"Laporan_BOQ_Professional.xlsx");
+};
 
+
+/* =========================
+   BUTTON EVENT FIX
+========================= */
+document.addEventListener("DOMContentLoaded", function(){
+
+let btn = document.getElementById("btnExport");
+
+if(btn){
+btn.addEventListener("click", exportExcel);
 }
 
+});
 /* =========================
    SAVE SERVER
 ========================= */

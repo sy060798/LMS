@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Add Ticket - FS Ticket DB</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+    font-family:Arial, Helvetica, sans-serif;
+    background:#f4f6f9;
+}
+
+header{
+    background:#0d47a1;
+    color:#fff;
+    padding:18px 25px;
+    font-size:28px;
+    font-weight:bold;
+}
+
+nav{
+    background:#1565c0;
+    padding:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+nav a{
+    color:#fff;
+    text-decoration:none;
+    padding:10px 16px;
+    border-radius:8px;
+    background:rgba(255,255,255,.12);
+}
+
+nav a:hover{
+    background:rgba(255,255,255,.22);
+}
+
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:25px;
+}
+
+.box{
+    background:#fff;
+    border-radius:14px;
+    padding:25px;
+    box-shadow:0 5px 14px rgba(0,0,0,.08);
+}
+
+.title{
+    font-size:26px;
+    font-weight:bold;
+    margin-bottom:20px;
+    color:#0d47a1;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+    gap:18px;
+}
+
+.form-group{
+    display:flex;
+    flex-direction:column;
+}
+
+label{
+    font-size:14px;
+    margin-bottom:7px;
+    color:#555;
+    font-weight:bold;
+}
+
+input,select,textarea{
+    padding:12px;
+    border:1px solid #ccc;
+    border-radius:10px;
+    font-size:15px;
+    outline:none;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+    border-color:#1565c0;
+}
+
+.full{
+    grid-column:1/-1;
+}
+
+.btn-area{
+    margin-top:25px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+button{
+    border:none;
+    padding:13px 22px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.save{
+    background:#1565c0;
+    color:#fff;
+}
+
+.reset{
+    background:#777;
+    color:#fff;
+}
+
+.save:hover{
+    background:#0d47a1;
+}
+
+.reset:hover{
+    background:#555;
+}
+
+.note{
+    margin-top:15px;
+    color:green;
+    font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<header>FS Ticket DB</header>
+
+<nav>
+<a href="../index.html">Dashboard</a>
+<a href="addtiket.html">Add Ticket</a>
+<a href="#">Material</a>
+<a href="#">Export Excel</a>
+</nav>
+
+<div class="container">
+<div class="box">
+
+<div class="title">Add New Ticket</div>
+
+<form id="ticketForm">
+
+<div class="grid">
+
+<div class="form-group">
+<label>No</label>
+<input type="number" id="no" required>
+</div>
+
+<div class="form-group">
+<label>Customer</label>
+<input type="text" id="customer" required>
+</div>
+
+<div class="form-group">
+<label>Nama Project</label>
+<input type="text" id="project" required>
+</div>
+
+<div class="form-group">
+<label>No SPK</label>
+<input type="text" id="spk" required>
+</div>
+
+<div class="form-group">
+<label>Tanggal</label>
+<input type="date" id="tanggal" required>
+</div>
+
+<div class="form-group">
+<label>City</label>
+<input type="text" id="city" required>
+</div>
+
+<div class="form-group">
+<label>Status</label>
+<select id="status">
+<option value="Open">Open</option>
+<option value="Progress">Progress</option>
+<option value="Close">Close</option>
+</select>
+</div>
+
+<div class="form-group full">
+<label>Keterangan</label>
+<textarea id="ket" rows="4"></textarea>
+</div>
+
+</div>
+
+<div class="btn-area">
+<button type="submit" class="save">Save Ticket</button>
+<button type="reset" class="reset">Reset</button>
+</div>
+
+<div class="note" id="msg"></div>
+
+</form>
+
+</div>
+</div>
+
+<script>
+const form = document.getElementById("ticketForm");
+
+form.addEventListener("submit", function(e){
+    e.preventDefault();
+
+    let data = JSON.parse(localStorage.getItem("tickets")) || [];
+
+    const ticket = {
+        no: document.getElementById("no").value,
+        customer: document.getElementById("customer").value,
+        project: document.getElementById("project").value,
+        spk: document.getElementById("spk").value,
+        tanggal: document.getElementById("tanggal").value,
+        city: document.getElementById("city").value,
+        status: document.getElementById("status").value,
+        ket: document.getElementById("ket").value
+    };
+
+    data.push(ticket);
+
+    localStorage.setItem("tickets", JSON.stringify(data));
+
+    document.getElementById("msg").innerText = "Ticket berhasil disimpan.";
+
+    form.reset();
+});
+
+</script>
+
+</body>
+</html>

@@ -6,31 +6,31 @@
 const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   DB CORE (LOCAL)
+   DB CORE
 ========================= */
 window.DB = {
+
   getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
 
   saveTickets: (data) => {
     localStorage.setItem("tickets", JSON.stringify(data));
-    DB.pushToServer(data); // 🔥 auto sync ke server
+    DB.pushToServer(data);
   },
 
+  /* 🔥 FIX: pakai SPK */
   getActiveTicket: () => {
-    let id = localStorage.getItem("activeTicketId");
-    return DB.getTickets().find(t => t.id == id);
+    let spk = localStorage.getItem("activeTicketId");
+    return DB.getTickets().find(t => t.spk == spk);
   },
 
   /* =========================
-     🔥 PUSH KE SERVER
+     PUSH SERVER
   ========================= */
   pushToServer: async (data) => {
     try {
       await fetch(SERVER_URL + "/syncTickets", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tickets: data })
       });
     } catch (e) {
@@ -39,7 +39,7 @@ window.DB = {
   },
 
   /* =========================
-     🔥 PULL DARI SERVER
+     PULL SERVER
   ========================= */
   pullFromServer: async () => {
     try {
@@ -59,28 +59,27 @@ window.DB = {
 };
 
 /* =========================
-   SYNC MATERIAL KE TICKET
+   SYNC MATERIAL → TICKET
 ========================= */
 window.syncMaterialToTicket = function(materials){
 
   let tickets = DB.getTickets();
-  let activeId = localStorage.getItem("activeTicketId");
+  let spk = localStorage.getItem("activeTicketId");
 
-  let t = tickets.find(x => x.id == activeId);
+  let t = tickets.find(x => x.spk == spk);
   if(!t) return;
 
-  t.material = materials.filter(m => Number(m.qty) > 0);
+  t.material = (materials || []).filter(m => Number(m.qty) > 0);
 
   DB.saveTickets(tickets);
 };
 
 /* =========================
-   GET MATERIAL
+   GET MATERIAL PER TICKET
 ========================= */
-window.getMaterialByTicket = function(ticketId){
+window.getMaterialByTicket = function(spk){
 
-  let t = DB.getTickets().find(x => x.id == ticketId);
-
+  let t = DB.getTickets().find(x => x.spk == spk);
   return t?.material || [];
 
 };
@@ -92,7 +91,7 @@ window.updateTicket = function(ticket){
 
   let tickets = DB.getTickets();
 
-  let i = tickets.findIndex(t => t.id == ticket.id);
+  let i = tickets.findIndex(t => t.spk == ticket.spk);
   if(i >= 0){
     tickets[i] = ticket;
     DB.saveTickets(tickets);
@@ -101,7 +100,7 @@ window.updateTicket = function(ticket){
 };
 
 /* =========================
-   🔥 AUTO LOAD SAAT WEB DIBUKA
+   AUTO INIT
 ========================= */
 (async function initSync(){
   await DB.pullFromServer();
@@ -109,10 +108,10 @@ window.updateTicket = function(ticket){
 })();
 
 /* =========================
-   AUTO REFRESH TIAP TAB (OPTIONAL)
+   AUTO REFRESH SERVER
 ========================= */
 setInterval(() => {
   DB.pullFromServer();
-}, 30000); // tiap 30 detik
+}, 30000);
 
 })();

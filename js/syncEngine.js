@@ -23,7 +23,7 @@ function getActiveTicket(){
 }
 
 /* =========================
-   CLEAN ONLY BEFORE SAVE
+   CLEAN BEFORE SAVE
 ========================= */
 function cleanBeforeSave(tickets){
 
@@ -46,7 +46,7 @@ function cleanBeforeSave(tickets){
 }
 
 /* =========================
-   SAVE ALL
+   SAVE SAFE
 ========================= */
 async function saveAll(){
 
@@ -54,7 +54,6 @@ async function saveAll(){
 
     let tickets = DB.getTickets();
 
-    // ONLY CLEAN BEFORE SAVE
     let cleaned = cleanBeforeSave(tickets);
 
     DB.saveTickets(cleaned);
@@ -78,25 +77,38 @@ async function saveAll(){
 }
 
 /* =========================
-   LOAD SERVER (FULL DATA)
+   LOAD SAFE (MERGE)
 ========================= */
 async function loadAll(){
 
   try {
 
     let res = await fetch(SERVER_URL + "/api/get?type=LMS");
-    let data = await res.json();
+    let serverData = await res.json();
 
-    if(Array.isArray(data)){
+    if(!Array.isArray(serverData)) return;
 
-      // ❗JANGAN DI CLEAN
-      DB.saveTickets(data);
+    let localData = DB.getTickets();
 
-      window.dispatchEvent(new Event("ticketsUpdated"));
+    let map = new Map();
 
-      console.log("✔ LOAD OK");
+    // LOCAL PRIORITY (jangan hilang)
+    localData.forEach(t => map.set(t.id, t));
 
-    }
+    // SERVER hanya fill missing
+    serverData.forEach(t => {
+      if(!map.has(t.id)){
+        map.set(t.id, t);
+      }
+    });
+
+    let merged = Array.from(map.values());
+
+    DB.saveTickets(merged);
+
+    window.dispatchEvent(new Event("ticketsUpdated"));
+
+    console.log("✔ LOAD MERGED OK");
 
   } catch (e) {
     console.log("LOAD ERROR", e);
@@ -111,10 +123,16 @@ async function loadAll(){
 })();
 
 /* =========================
-   AUTO SYNC
+   AUTO SYNC (SAFE)
 ========================= */
-setInterval(saveAll, 30000);
+let syncTimer;
 
+function autoSave(){
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(saveAll, 5000);
+}
+
+setInterval(saveAll, 30000);
 window.addEventListener("beforeunload", saveAll);
 
 /* =========================
@@ -123,7 +141,8 @@ window.addEventListener("beforeunload", saveAll);
 window.FS = {
   DB,
   saveAll,
-  loadAll
+  loadAll,
+  autoSave
 };
 
 window.saveNow = saveAll;

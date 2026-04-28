@@ -7,7 +7,11 @@ const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12
 ========================= */
 const DB = {
   getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
-  saveTickets: (data) => localStorage.setItem("tickets", JSON.stringify(data)),
+
+  saveTicketsLocal: (data) => {
+    localStorage.setItem("tickets", JSON.stringify(data));
+  },
+
   getActiveSpk: () => localStorage.getItem("activeTicketId")
 };
 
@@ -19,31 +23,37 @@ function getActiveTicket(){
 }
 
 /* =========================
-   SYNC MATERIAL → TICKET
-   (ONLY QTY > 0)
+   CLEAN MATERIAL (ONLY QTY > 0)
 ========================= */
-window.syncMaterialToTicket = function(materials){
+function cleanTickets(tickets){
 
-  let tickets = DB.getTickets();
-  let spk = DB.getActiveSpk();
+  return tickets.map(t => {
 
-  let t = tickets.find(x => x.spk == spk);
-  if(!t) return;
+    if(t.material && Array.isArray(t.material)){
+      t.material = t.material.filter(m => Number(m.qty) > 0);
+    }
 
-  t.material = (materials || [])
-    .filter(m => Number(m.qty) > 0);
+    return t;
+  });
 
-  DB.saveTickets(tickets);
-};
+}
 
 /* =========================
-   SAVE TICKET FULL
+   🔥 MAIN SAVE ALL (ONE BUTTON)
 ========================= */
-async function pushToServer(){
+async function saveAll(){
 
-  let tickets = DB.getTickets();
+  try {
 
-  try{
+    let tickets = DB.getTickets();
+
+    // cleanup material
+    tickets = cleanTickets(tickets);
+
+    // save local first
+    DB.saveTicketsLocal(tickets);
+
+    // push server
     await fetch(SERVER_URL + "/api/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,51 +62,46 @@ async function pushToServer(){
         data: tickets
       })
     });
-  } catch(e){
-    console.log("SYNC ERROR", e);
+
+    alert("✔ Semua data berhasil disimpan");
+
+  } catch (e) {
+    console.log("SAVE ERROR", e);
+    alert("❌ Gagal save ke server");
   }
+
 }
 
 /* =========================
-   LOAD FROM SERVER
+   LOAD SERVER
 ========================= */
-async function pullFromServer(){
+async function loadAll(){
 
-  try{
+  try {
+
     let res = await fetch(SERVER_URL + "/api/get?type=LMS");
     let data = await res.json();
 
     if(Array.isArray(data)){
-      DB.saveTickets(data);
+      DB.saveTicketsLocal(data);
     }
 
-  } catch(e){
+  } catch (e) {
     console.log("LOAD ERROR", e);
   }
+
 }
 
 /* =========================
-   AUTO INIT
+   INIT
 ========================= */
 (async function(){
-  await pullFromServer();
+  await loadAll();
 })();
 
 /* =========================
-   AUTO SYNC
+   EXPOSE GLOBAL
 ========================= */
-setInterval(pushToServer, 30000);
-
-window.addEventListener("beforeunload", pushToServer);
-
-/* =========================
-   GLOBAL API
-========================= */
-window.FS = {
-  DB,
-  pushToServer,
-  pullFromServer,
-  syncMaterialToTicket
-};
+window.SAVE_ALL = saveAll;
 
 })();

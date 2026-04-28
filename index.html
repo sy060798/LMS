@@ -77,6 +77,38 @@ font-weight:bold;
 .btn-export:hover{
 background:#08306b;
 }
+
+.search-box{
+margin:15px 0;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.search-box input{
+padding:10px 14px;
+border:1px solid #ccc;
+border-radius:8px;
+min-width:280px;
+}
+
+.aksi{
+display:flex;
+gap:8px;
+}
+
+.icon-btn{
+border:none;
+padding:6px 10px;
+border-radius:6px;
+cursor:pointer;
+font-size:16px;
+color:#fff;
+}
+
+.box-btn{background:#1565c0;}
+.edit-btn{background:#f39c12;}
+.del-btn{background:#e74c3c;}
 </style>
 </head>
 
@@ -119,6 +151,10 @@ background:#08306b;
 
 <h2 style="margin-bottom:12px">Recent Tickets</h2>
 
+<div class="search-box">
+<input type="text" id="searchCustomer" placeholder="Cari Customer...">
+</div>
+
 <table>
 <thead>
 <tr>
@@ -129,6 +165,7 @@ background:#08306b;
 <th>Tanggal</th>
 <th>City</th>
 <th>Status</th>
+<th>Aksi</th>
 </tr>
 </thead>
 
@@ -160,7 +197,13 @@ data.filter(x => x.material && x.material.length > 0).length;
 
 const body = document.getElementById('ticketBody');
 
-body.innerHTML = data.slice(-10).reverse().map((x,i)=>`
+function loadTable(filter=""){
+
+let rows = data.filter(x =>
+x.customer.toLowerCase().includes(filter.toLowerCase())
+);
+
+body.innerHTML = rows.slice(-50).reverse().map((x,i)=>`
 <tr>
 <td>${i+1}</td>
 <td>${x.customer}</td>
@@ -169,12 +212,65 @@ body.innerHTML = data.slice(-10).reverse().map((x,i)=>`
 <td>${x.tanggal}</td>
 <td>${x.city}</td>
 <td><span class="status">${x.status}</span></td>
+<td>
+<div class="aksi">
+<button class="icon-btn box-btn" onclick="openMaterial(${data.indexOf(x)})">📦</button>
+<button class="icon-btn edit-btn" onclick="editTicket(${data.indexOf(x)})">✏️</button>
+<button class="icon-btn del-btn" onclick="hapusTicket(${data.indexOf(x)})">🗑️</button>
+</div>
+</td>
 </tr>
 `).join('');
 
-function exportExcel(){
+}
 
-let data = JSON.parse(localStorage.getItem('tickets') || '[]');
+loadTable();
+
+document.getElementById("searchCustomer").addEventListener("input",function(){
+loadTable(this.value);
+});
+
+function openMaterial(i){
+location.href="material/material.html?id="+i;
+}
+
+function editTicket(i){
+
+let x = data[i];
+
+x.customer = prompt("Customer",x.customer) || x.customer;
+x.project  = prompt("Project",x.project) || x.project;
+x.spk      = prompt("SPK",x.spk) || x.spk;
+x.city     = prompt("City",x.city) || x.city;
+
+localStorage.setItem("tickets",JSON.stringify(data));
+loadTable();
+
+}
+
+function hapusTicket(i){
+
+if(confirm("Hapus ticket ini?")){
+data.splice(i,1);
+localStorage.setItem("tickets",JSON.stringify(data));
+
+document.getElementById('totTicket').textContent = data.length;
+
+document.getElementById('openTicket').textContent =
+data.filter(x => x.status === 'Open').length;
+
+document.getElementById('closeTicket').textContent =
+data.filter(x => x.status === 'Close').length;
+
+document.getElementById('matCount').textContent =
+data.filter(x => x.material && x.material.length > 0).length;
+
+loadTable();
+}
+
+}
+
+function exportExcel(){
 
 if(data.length === 0){
 alert("Data kosong");

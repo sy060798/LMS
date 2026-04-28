@@ -6,18 +6,18 @@ const search = document.getElementById("search");
 if(!matBody) return;
 
 /* =========================
-   LOAD MATERIAL PER TICKET
+   LOAD TICKET + MATERIAL
 ========================= */
 let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
 let activeId = localStorage.getItem("activeTicketId");
 
 let ticket = tickets.find(t => t.id == activeId);
 
-/* MATERIAL KHUSUS TICKET INI */
+/* MATERIAL PER TICKET */
 let materials = ticket?.material ? [...ticket.material] : [];
 
 /* =========================
-   SAVE MATERIAL LOCAL
+   SAVE LOCAL
 ========================= */
 function saveData(){
   if(ticket){
@@ -27,7 +27,7 @@ function saveData(){
 }
 
 /* =========================
-   SYNC KE TICKET
+   SYNC KE TICKET (FINAL DATA ONLY > 0)
 ========================= */
 function syncToTicket(){
   if(ticket){
@@ -37,14 +37,22 @@ function syncToTicket(){
 }
 
 /* =========================
-   FORMAT
+   COMMIT (RECOMMENDED)
+========================= */
+function commit(){
+  saveData();
+  syncToTicket();
+}
+
+/* =========================
+   FORMAT RUPIAH
 ========================= */
 function rp(x){
   return Number(x || 0).toLocaleString("id-ID");
 }
 
 /* =========================
-   RENDER
+   RENDER TABLE
 ========================= */
 function render(filter=""){
 
@@ -52,7 +60,9 @@ matBody.innerHTML = "";
 
 let list = materials
 .map((m,i)=>({...m,_i:i}))
-.filter(x => !filter || x.nama.toLowerCase().includes(filter.toLowerCase()));
+.filter(x =>
+  !filter || x.nama.toLowerCase().includes(filter.toLowerCase())
+);
 
 list.forEach((item,i)=>{
 
@@ -93,8 +103,7 @@ if(!materials[i]) return;
 
 materials[i].qty = Number(val);
 
-saveData();
-syncToTicket();
+commit();
 render(search?.value || "");
 
 };
@@ -114,20 +123,19 @@ let harga = prompt("Harga");
 if(harga === null) return;
 
 materials.push({
-nama,
-satuan,
-harga:Number(harga),
-qty:0
+  nama,
+  satuan,
+  harga:Number(harga),
+  qty:0
 });
 
-saveData();
-syncToTicket();
+commit();
 render(search?.value || "");
 
 };
 
 /* =========================
-   EDIT
+   EDIT MATERIAL
 ========================= */
 window.editMaterial = function(i){
 
@@ -143,25 +151,28 @@ if(!satuan) return;
 let harga = prompt("Harga", x.harga);
 if(harga === null) return;
 
-materials[i] = {...x,nama,satuan,harga:Number(harga)};
+materials[i] = {
+  ...x,
+  nama,
+  satuan,
+  harga:Number(harga)
+};
 
-saveData();
-syncToTicket();
+commit();
 render(search?.value || "");
 
 };
 
 /* =========================
-   DELETE
+   DELETE MATERIAL
 ========================= */
 window.hapusMaterial = function(i){
 
 if(!materials[i]) return;
 
-if(confirm("Hapus material?")){
+if(confirm("Hapus material ini?")){
 materials.splice(i,1);
-saveData();
-syncToTicket();
+commit();
 render(search?.value || "");
 }
 
@@ -180,17 +191,15 @@ render(this.value);
    FORCE SAVE BUTTON
 ========================= */
 window.forceSave = function(){
-saveData();
-syncToTicket();
-alert("Material tersimpan ke ticket");
+commit();
+alert("✔ Material berhasil disimpan ke ticket");
 };
 
 /* =========================
-   CLOSE SAVE AUTO
+   AUTO SAVE BEFORE CLOSE
 ========================= */
 window.addEventListener("beforeunload", function(){
-saveData();
-syncToTicket();
+commit();
 });
 
 /* =========================

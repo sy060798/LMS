@@ -23,14 +23,15 @@ saveData();
 }
 
 /* =========================
-   SAVE MATERIAL MASTER
+   SAVE LOCAL
 ========================= */
 function saveData(){
 localStorage.setItem("materialMaster", JSON.stringify(materials));
 }
 
 /* =========================
-   SYNC KE TICKET (🔥 FIX UTAMA)
+   SYNC KE TICKET (FIXED)
+   ONLY QTY > 0
 ========================= */
 function syncToTicket(){
 
@@ -40,10 +41,10 @@ let activeId = localStorage.getItem("activeTicketId");
 if(!activeId) return;
 
 let t = tickets.find(x => x.id == activeId);
-
 if(!t) return;
 
-t.material = materials;
+/* 🔥 ONLY QTY > 0 */
+t.material = materials.filter(m => Number(m.qty) > 0);
 
 localStorage.setItem("tickets", JSON.stringify(tickets));
 }
@@ -58,14 +59,14 @@ alert("Data berhasil disimpan!");
 };
 
 /* =========================
-   FORMAT RUPIAH
+   FORMAT
 ========================= */
 function rp(x){
 return Number(x).toLocaleString("id-ID");
 }
 
 /* =========================
-   RENDER TABLE
+   RENDER
 ========================= */
 function render(filter){
 
@@ -81,7 +82,7 @@ x.nama.toLowerCase().includes(filter.toLowerCase())
 
 for(let i=0;i<list.length;i++){
 
-let total = Number(list[i].harga) * Number(list[i].qty || 0);
+let total = list[i].harga * (list[i].qty || 0);
 
 matBody.innerHTML += `
 <tr>
@@ -109,7 +110,7 @@ onchange="ubahQty(${i},this.value)">
 }
 
 /* =========================
-   UBAH QTY
+   QTY CHANGE
 ========================= */
 window.ubahQty = function(i,val){
 
@@ -119,14 +120,12 @@ materials[i].qty = Number(val);
 
 saveData();
 render(search.value);
-
-/* 🔥 AUTO SYNC KE TICKET */
 syncToTicket();
 
 };
 
 /* =========================
-   TAMBAH MATERIAL
+   ADD
 ========================= */
 window.addMaterial = function(){
 
@@ -148,14 +147,12 @@ qty:0
 
 saveData();
 render(search.value);
-
-/* SYNC */
 syncToTicket();
 
 };
 
 /* =========================
-   EDIT MATERIAL
+   EDIT
 ========================= */
 window.editMaterial = function(i){
 
@@ -175,63 +172,53 @@ materials[i] = { ...x, nama, satuan, harga:Number(harga) };
 
 saveData();
 render(search.value);
-
-/* SYNC */
 syncToTicket();
 
 };
 
 /* =========================
-   HAPUS MATERIAL
+   DELETE
 ========================= */
 window.hapusMaterial = function(i){
 
 if(!materials[i]) return;
 
 if(confirm("Hapus material ini?")){
-
 materials.splice(i,1);
-
 saveData();
 render(search.value);
-
-/* SYNC */
 syncToTicket();
-
 }
 
 };
 
 /* =========================
-   SEARCH
+   SEARCH SAFE
 ========================= */
+if(search){
 search.addEventListener("input", function(){
 render(this.value);
 });
+}
 
+/* =========================
+   AUTO SAVE CLOSE (SAFE)
+========================= */
 window.addEventListener("beforeunload", function(){
 
-// simpan local dulu
-if(typeof saveData === "function") saveData();
-
-// ambil material terbaru
-let material = JSON.parse(localStorage.getItem("materialMaster") || "[]");
-
-// ambil tickets juga (biar tetap konsisten per ticket)
-let tickets = JSON.parse(localStorage.getItem("tickets") || "[]");
-
-// kirim ke server (AMAN SAAT CLOSE)
-if(typeof SERVER_URL !== "undefined"){
+try{
+saveData();
+syncToTicket();
 
 navigator.sendBeacon(
 SERVER_URL + "/saveSync",
 JSON.stringify({
-material: material,
-tickets: tickets
+material: materials.filter(m => Number(m.qty) > 0),
+tickets: JSON.parse(localStorage.getItem("tickets") || "[]")
 })
 );
 
-}
+}catch(e){}
 
 });
 

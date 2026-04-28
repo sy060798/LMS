@@ -10,17 +10,29 @@ form.addEventListener("submit", function(e){
 
     let data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
+    const spk = document.getElementById("spk")?.value.trim();
+
+    if(!spk){
+        alert("SPK wajib diisi!");
+        return;
+    }
+
+    if(data.find(t => t.spk === spk)){
+        alert("SPK sudah digunakan!");
+        return;
+    }
+
     const ticket = {
-        id: Date.now(),
+        id: spk, // 🔥 pakai SPK sebagai ID
         no: document.getElementById("no")?.value || "",
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
-        spk: document.getElementById("spk")?.value.trim() || "",
+        spk: spk,
         tanggal: document.getElementById("tanggal")?.value || "",
         city: document.getElementById("city")?.value.trim() || "",
         status: document.getElementById("status")?.value || "Open",
         ket: document.getElementById("ket")?.value.trim() || "",
-        material: [], // 🔥 PER TICKET MATERIAL
+        material: [],
         created: new Date().toISOString()
     };
 
@@ -28,7 +40,6 @@ form.addEventListener("submit", function(e){
 
     localStorage.setItem("tickets", JSON.stringify(data));
 
-    // OPTIONAL: aktifkan ticket terakhir dibuat
     localStorage.setItem("activeTicketId", ticket.id);
 
     if(msg){
@@ -40,7 +51,6 @@ form.addEventListener("submit", function(e){
 
     const statusEl = document.getElementById("status");
     if(statusEl) statusEl.value = "Open";
-
 });
 
 });

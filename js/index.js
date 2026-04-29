@@ -27,62 +27,68 @@ function refreshData(){
 ========================= */
 function loadSummary(){
 
-refreshData();
+  refreshData();
 
-document.getElementById("totTicket").textContent = data.length;
+  const tot = document.getElementById("totTicket");
+  const open = document.getElementById("openTicket");
+  const close = document.getElementById("closeTicket");
+  const mat = document.getElementById("matCount");
 
-document.getElementById("openTicket").textContent =
-data.filter(x => x.status === "Open").length;
+  if(tot) tot.textContent = data.length;
 
-document.getElementById("closeTicket").textContent =
-data.filter(x => x.status === "Close").length;
+  if(open) open.textContent =
+    data.filter(x => x.status === "Open").length;
 
-document.getElementById("matCount").textContent =
-data.filter(x => x.material && x.material.length > 0).length;
+  if(close) close.textContent =
+    data.filter(x => x.status === "Close").length;
 
+  if(mat) mat.textContent =
+    data.filter(x => x.material && x.material.length > 0).length;
 }
 
 /* =========================
-   TABLE RENDER (SAFE ID BASED)
+   TABLE RENDER
 ========================= */
 function loadTable(filter=""){
 
-refreshData();
+  refreshData();
 
-let rows = data.filter(x =>
-(x.project || "").toLowerCase().includes(filter.toLowerCase())
-);
+  let rows = data.filter(x =>
+    (x.project || "").toLowerCase().includes(filter.toLowerCase())
+  );
 
-body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
+  if(!body) return;
 
-return `
-<tr>
-<td>${i+1}</td>
-<td>${x.customer || ""}</td>
-<td>${x.project || ""}</td>
-<td>${x.spk || ""}</td>
-<td>${x.tanggal || ""}</td>
-<td>${x.city || ""}</td>
-<td><span class="status">${x.status || ""}</span></td>
+  body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
 
-<td>
-<div class="aksi">
+    return `
+    <tr>
+    <td>${i+1}</td>
+    <td>${x.customer || ""}</td>
+    <td>${x.project || ""}</td>
+    <td>${x.spk || ""}</td>
+    <td>${x.tanggal || ""}</td>
+    <td>${x.city || ""}</td>
+    <td><span class="status">${x.status || ""}</span></td>
 
-<button class="icon-btn box-btn"
-onclick="openMaterialById('${x.id}')">📦</button>
+    <td>
+    <div class="aksi">
 
-<button class="icon-btn edit-btn"
-onclick="editTicketById('${x.id}')">✏️</button>
+    <button class="icon-btn box-btn"
+    onclick="openMaterialById('${x.id}')">📦</button>
 
-<button class="icon-btn del-btn"
-onclick="hapusTicketById('${x.id}')">🗑️</button>
+    <button class="icon-btn edit-btn"
+    onclick="editTicketById('${x.id}')">✏️</button>
 
-</div>
-</td>
-</tr>
-`;
+    <button class="icon-btn del-btn"
+    onclick="hapusTicketById('${x.id}')">🗑️</button>
 
-}).join("");
+    </div>
+    </td>
+    </tr>
+    `;
+
+  }).join("");
 
 }
 
@@ -90,13 +96,13 @@ onclick="hapusTicketById('${x.id}')">🗑️</button>
    SEARCH
 ========================= */
 if(search){
-search.addEventListener("input", function(){
-loadTable(this.value);
-});
+  search.addEventListener("input", function(){
+    loadTable(this.value);
+  });
 }
 
 /* =========================
-   FIND BY ID (IMPORTANT FIX)
+   FIND
 ========================= */
 function findIndexById(id){
   return data.findIndex(x => x.id === id);
@@ -107,15 +113,14 @@ function findIndexById(id){
 ========================= */
 window.openMaterialById = function(id){
 
-let tickets = getLocal();
-let t = tickets.find(x => x.id == id);
+  let tickets = getLocal();
+  let t = tickets.find(x => x.id == id);
 
-if(!t) return;
+  if(!t) return;
 
-localStorage.setItem("activeTicketId", t.id);
+  localStorage.setItem("activeTicketId", t.id);
 
-window.location.href = "material/material.html";
-
+  window.location.href = "material/material.html";
 };
 
 /* =========================
@@ -123,24 +128,23 @@ window.location.href = "material/material.html";
 ========================= */
 window.editTicketById = function(id){
 
-let tickets = getLocal();
-let idx = findIndexById(id);
+  let tickets = getLocal();
+  let idx = findIndexById(id);
 
-if(idx === -1) return;
+  if(idx === -1) return;
 
-let x = tickets[idx];
+  let x = tickets[idx];
 
-x.customer = prompt("Customer", x.customer) || x.customer;
-x.project  = prompt("Project", x.project) || x.project;
-x.spk      = prompt("SPK", x.spk) || x.spk;
-x.city     = prompt("City", x.city) || x.city;
-x.status   = prompt("Status", x.status) || x.status;
+  x.customer = prompt("Customer", x.customer) || x.customer;
+  x.project  = prompt("Project", x.project) || x.project;
+  x.spk      = prompt("SPK", x.spk) || x.spk;
+  x.city     = prompt("City", x.city) || x.city;
+  x.status   = prompt("Status", x.status) || x.status;
 
-localStorage.setItem("tickets", JSON.stringify(tickets));
+  localStorage.setItem("tickets", JSON.stringify(tickets));
 
-loadSummary();
-loadTable(search.value);
-
+  loadSummary();
+  loadTable(search.value);
 };
 
 /* =========================
@@ -148,32 +152,51 @@ loadTable(search.value);
 ========================= */
 window.hapusTicketById = function(id){
 
-if(!confirm("Hapus ticket ini?")) return;
+  if(!confirm("Hapus ticket ini?")) return;
 
-let tickets = getLocal();
-let idx = findIndexById(id);
+  let tickets = getLocal();
+  let idx = findIndexById(id);
 
-if(idx === -1) return;
+  if(idx === -1) return;
 
-tickets.splice(idx,1);
+  tickets.splice(idx,1);
 
-localStorage.setItem("tickets", JSON.stringify(tickets));
+  localStorage.setItem("tickets", JSON.stringify(tickets));
 
-loadSummary();
-loadTable(search.value);
-
+  loadSummary();
+  loadTable(search.value);
 };
 
 /* =========================
-   SYNC UPDATE EVENT
+   🔥 EXPORT EXCEL FIX (INI YANG KAMU BUTUH)
+========================= */
+window.exportExcel = function () {
+
+  let data = JSON.parse(localStorage.getItem("tickets") || "[]");
+
+  if (!data || data.length === 0) {
+    alert("Data kosong");
+    return;
+  }
+
+  let ws = XLSX.utils.json_to_sheet(data);
+  let wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Tickets");
+
+  XLSX.writeFile(wb, "tickets.xlsx");
+};
+
+/* =========================
+   INIT SYNC EVENT
 ========================= */
 window.addEventListener("ticketsUpdated", function () {
-loadSummary();
-loadTable(search.value);
+  loadSummary();
+  loadTable(search ? search.value : "");
 });
 
 /* =========================
-   INIT
+   INIT LOAD
 ========================= */
 loadSummary();
 loadTable();

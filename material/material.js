@@ -6,8 +6,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const body = document.getElementById("matBody");
   const search = document.getElementById("matSearch");
 
-  if (!popup || !body) {
-    console.error("❌ Popup element tidak ditemukan");
+  if (!popup || !body || !search) {
+    console.error("❌ Element popup tidak ditemukan");
     return;
   }
 
@@ -23,7 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
   ];
 
   /* =========================
-     DB
+     DB LOCALSTORAGE
   ========================= */
   const DB = {
     get: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
@@ -41,34 +41,38 @@ document.addEventListener("DOMContentLoaded", function () {
   /* =========================
      OPEN POPUP
   ========================= */
- window.openMaterialPopup = function () {
+  window.openMaterialPopup = function () {
 
-  const ticket = getTicket();
+    const ticket = getTicket();
 
-  if (!ticket) {
-    alert("❌ Ticket belum dipilih");
-    return;
-  }
+    if (!ticket) {
+      alert("❌ Ticket belum dipilih");
+      return;
+    }
 
-  materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
+    materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
 
-  if (ticket.material) {
-    materials = materials.map(m => {
-      let old = ticket.material.find(x => x.nama === m.nama);
-      return { ...m, qty: old ? old.qty : 0 };
-    });
-  }
+    if (ticket.material) {
+      materials = materials.map(m => {
+        let old = ticket.material.find(x => x.nama === m.nama);
+        return { ...m, qty: old ? old.qty : 0 };
+      });
+    }
 
-  popup.style.display = "flex";
-  render("");
-};
+    popup.style.display = "flex";
+    render("");
+  };
 
-window.openMaterialById = function(id){
-  localStorage.setItem("activeTicketId", id);
-  openMaterialPopup();
-};
   /* =========================
-     CLOSE
+     OPEN BY ID (DARI TABEL)
+  ========================= */
+  window.openMaterialById = function (id) {
+    localStorage.setItem("activeTicketId", id);
+    window.openMaterialPopup();
+  };
+
+  /* =========================
+     CLOSE POPUP
   ========================= */
   window.closeMaterialPopup = function () {
     commit();
@@ -76,7 +80,7 @@ window.openMaterialById = function(id){
   };
 
   /* =========================
-     SAVE
+     AUTO SAVE
   ========================= */
   function commit() {
     clearTimeout(saveTimer);
@@ -99,11 +103,11 @@ window.openMaterialById = function(id){
 
       DB.save(tickets);
       console.log("💾 Material saved");
-    }, 300);
+    }, 200);
   }
 
   /* =========================
-     RENDER
+     RENDER TABLE
   ========================= */
   function render(filter = "") {
     body.innerHTML = "";
@@ -121,7 +125,7 @@ window.openMaterialById = function(id){
             <td>${m.satuan}</td>
             <td>Rp ${m.harga.toLocaleString("id-ID")}</td>
             <td>
-              <input type="number" value="${m.qty || 0}" min="0"
+              <input type="number" min="0" value="${m.qty || 0}"
                 onchange="setQty('${m.nama}', this.value)">
             </td>
             <td>Rp ${total.toLocaleString("id-ID")}</td>
@@ -131,7 +135,7 @@ window.openMaterialById = function(id){
   }
 
   /* =========================
-     SET QTY
+     UPDATE QTY
   ========================= */
   window.setQty = function (nama, val) {
     let item = materials.find(x => x.nama === nama);

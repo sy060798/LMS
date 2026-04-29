@@ -23,8 +23,7 @@ form.addEventListener("submit", function(e){
     }
 
     const ticket = {
-        id: spk, // 🔥 pakai SPK sebagai ID
-        no: document.getElementById("no")?.value || "",
+        id: spk, // pakai SPK sebagai ID
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
         spk: spk,
@@ -32,6 +31,7 @@ form.addEventListener("submit", function(e){
         city: document.getElementById("city")?.value.trim() || "",
         status: document.getElementById("status")?.value || "Open",
         ket: document.getElementById("ket")?.value.trim() || "",
+        note: document.getElementById("note")?.value.trim() || "", // optional
         material: [],
         created: new Date().toISOString()
     };
@@ -39,7 +39,6 @@ form.addEventListener("submit", function(e){
     data.push(ticket);
 
     localStorage.setItem("tickets", JSON.stringify(data));
-
     localStorage.setItem("activeTicketId", ticket.id);
 
     if(msg){

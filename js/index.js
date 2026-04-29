@@ -5,7 +5,7 @@ let data = [];
 /* =========================
    ELEMENT
 ========================= */
-const body = document.getElementById("ticketBody");
+const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
@@ -25,7 +25,7 @@ function refreshData(){
 /* =========================
    SAVE NOTE
 ========================= */
-function saveNote(id, value){
+function saveNote(id,value){
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
   if(idx === -1) return;
@@ -37,7 +37,7 @@ function saveNote(id, value){
 /* =========================
    SAVE STATUS
 ========================= */
-function saveStatus(id, value){
+function saveStatus(id,value){
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
   if(idx === -1) return;
@@ -45,9 +45,7 @@ function saveStatus(id, value){
   tickets[idx].status = value;
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
-  requestAnimationFrame(() => {
-    loadSummary();
-  });
+  loadSummary();
 }
 
 /* =========================
@@ -81,6 +79,7 @@ function loadTable(filter=""){
 
   let rows = data.filter(x=>{
     let k = filter.toLowerCase();
+
     return (
       (x.customer || "").toLowerCase().includes(k) ||
       (x.project || "").toLowerCase().includes(k) ||
@@ -102,19 +101,21 @@ function loadTable(filter=""){
       <td>${x.tanggal || ""}</td>
       <td>${x.city || ""}</td>
 
+      <!-- STATUS -->
       <td>
         <select
-          onchange="updateStatus('${x.id}', this.value)"
+          onchange="updateStatus('${x.id}',this.value)"
+          onfocus="this.style.color='#000'"
+          onblur="if(this.value==''){this.style.color='#999'}"
           style="
             padding:7px 10px;
-            min-width:110px;
+            min-width:120px;
             border-radius:10px;
-            border:1px solid #d0d0d0;
-            background:#fff;
-            cursor:pointer;
-            font-weight:600;
-            outline:none;">
+            border:1px solid #ddd;
+            color:${x.status ? '#000' : '#999'};
+            background:#fff;">
 
+          <option value="">Pilih...</option>
           <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
           <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
           <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
@@ -123,59 +124,36 @@ function loadTable(filter=""){
         </select>
       </td>
 
+      <!-- NOTE -->
       <td>
         <input
           type="text"
           value="${x.note || ""}"
           placeholder="Isi note..."
-          oninput="updateNote('${x.id}', this.value)"
+          oninput="updateNote('${x.id}',this.value)"
           style="
             width:160px;
             padding:7px 10px;
-            border:1px solid #dcdcdc;
-            border-radius:10px;
-            outline:none;">
+            border:1px solid #ddd;
+            border-radius:10px;">
       </td>
 
+      <!-- AKSI -->
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 
-          <button
-            onclick="openMaterialById('${x.id}')"
-            style="
-              border:none;
-              padding:8px 10px;
-              border-radius:10px;
-              cursor:pointer;
-              background:#3498db;
-              color:#fff;
-              font-size:15px;">
+          <button onclick="openMaterialById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
             📦
           </button>
 
-          <button
-            onclick="editTicketById('${x.id}')"
-            style="
-              border:none;
-              padding:8px 10px;
-              border-radius:10px;
-              cursor:pointer;
-              background:#f39c12;
-              color:#fff;
-              font-size:15px;">
+          <button onclick="editTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
             ✏️
           </button>
 
-          <button
-            onclick="hapusTicketById('${x.id}')"
-            style="
-              border:none;
-              padding:8px 10px;
-              border-radius:10px;
-              cursor:pointer;
-              background:#e74c3c;
-              color:#fff;
-              font-size:15px;">
+          <button onclick="hapusTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
             🗑️
           </button>
 
@@ -183,6 +161,7 @@ function loadTable(filter=""){
       </td>
     </tr>
     `;
+
   }).join("");
 }
 
@@ -201,7 +180,7 @@ window.updateStatus = function(id,val){
    SEARCH
 ========================= */
 if(search){
-  search.addEventListener("input", function(){
+  search.addEventListener("input",function(){
     loadTable(this.value);
   });
 }
@@ -210,7 +189,7 @@ if(search){
    OPEN MATERIAL
 ========================= */
 window.openMaterialById = function(id){
-  localStorage.setItem("activeTicketId", id);
+  localStorage.setItem("activeTicketId",id);
   window.location.href = "material/material.html";
 };
 
@@ -225,10 +204,10 @@ window.editTicketById = function(id){
 
   let x = tickets[idx];
 
-  x.customer = prompt("Customer", x.customer) || x.customer;
-  x.project  = prompt("Project", x.project) || x.project;
-  x.spk      = prompt("SPK", x.spk) || x.spk;
-  x.city     = prompt("City", x.city) || x.city;
+  x.customer = prompt("Customer",x.customer) || x.customer;
+  x.project  = prompt("Project",x.project) || x.project;
+  x.spk      = prompt("SPK",x.spk) || x.spk;
+  x.city     = prompt("City",x.city) || x.city;
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
@@ -258,7 +237,7 @@ window.hapusTicketById = function(id){
 /* =========================
    INIT
 ========================= */
-window.addEventListener("ticketsUpdated", function(){
+window.addEventListener("ticketsUpdated",function(){
   loadSummary();
   loadTable(search ? search.value : "");
 });

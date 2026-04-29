@@ -190,24 +190,43 @@ window.exportExcel = function () {
   // =========================
   // 🔥 HEADER
   // =========================
-  let header = ["ID", "City", "Material"];
+  let header = [
+    "No",
+    "Customer",
+    "Project",
+    "SPK",
+    "Tanggal",
+    "City",
+    "Status",
+    "Material"
+  ];
+
   sheetData.push(header);
 
   // =========================
   // 🔥 DATA
   // =========================
-  data.forEach(t => {
+  data.forEach((t, index) => {
 
     let row = [
-      t.id || "",
-      t.city || ""
+      index + 1,
+      t.customer || "",
+      t.project || "",
+      t.spk || "",
+      t.tanggal || "",
+      t.city || "",
+      t.status || ""
     ];
 
+    // 🔥 MATERIAL (HANYA YANG ADA QTY > 0)
     if (t.material && t.material.length > 0) {
-      t.material.forEach(m => {
-        row.push(m.nama);
-        row.push(m.qty);
-      });
+
+      t.material
+        .filter(m => m.qty > 0)
+        .forEach(m => {
+          row.push(m.nama);
+          row.push(m.qty);
+        });
     }
 
     sheetData.push(row);
@@ -234,11 +253,31 @@ window.exportExcel = function () {
   }
 
   // =========================
+  // 🟡 WARNA QTY
+  // =========================
+  for (let R = 1; R <= range.e.r; R++) {
+    for (let C = 7; C <= range.e.c; C++) {
+
+      // kolom qty (setiap kolom genap setelah material)
+      if ((C - 7) % 2 === 1) {
+        let cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+        if (!cell) continue;
+
+        cell.s = {
+          fill: { fgColor: { rgb: "FFF2CC" } },
+          alignment: { horizontal: "center" }
+        };
+      }
+    }
+  }
+
+  // =========================
   // 📏 AUTO WIDTH
   // =========================
-  ws['!cols'] = sheetData[0].map((_, i) => ({
-    wch: i < 2 ? 20 : 18
-  }));
+  ws['!cols'] = sheetData[0].map((_, i) => {
+    if (i <= 6) return { wch: 20 };
+    return { wch: 25 };
+  });
 
   XLSX.writeFile(wb, "tickets.xlsx");
 };

@@ -63,8 +63,19 @@ padding:16px;
 box-shadow:0 4px 10px rgba(0,0,0,.08)
 }
 
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
+table{
+width:100%;
+border-collapse:collapse;
+table-layout:auto;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #ddd;
+text-align:left;
+vertical-align:middle;
+}
+
 th{background:#e3f2fd}
 
 .search-box{
@@ -80,6 +91,11 @@ border-radius:8px;
 min-width:280px;
 }
 
+input,select,button{
+position:relative;
+z-index:5;
+}
+
 .icon-btn{
 border:none;
 padding:6px 10px;
@@ -90,9 +106,7 @@ color:#fff;
 background:#1565c0;
 }
 
-/* =========================
-   POPUP MATERIAL (FIXED)
-========================= */
+/* POPUP */
 #materialPopup{
 display:none;
 position:fixed;
@@ -138,9 +152,6 @@ cursor:pointer;
 <nav>
 <a href="index.html">Dashboard</a>
 <a href="page/addtiket.html">Add Ticket</a>
-
-<!-- ❌ MATERIAL HAPUS DARI MENU (sesuai request kamu) -->
-
 <a href="#" onclick="exportExcel()">Export Excel</a>
 <a href="#" onclick="saveNow()">Save</a>
 </nav>
@@ -182,45 +193,43 @@ cursor:pointer;
 </div>
 </div>
 
-<!-- =========================
-     MATERIAL POPUP
-========================= -->
 <div id="materialPopup">
+<div class="modal-box">
 
-  <div class="modal-box">
+<div class="modal-header">
+<h2>📦 Material Ticket</h2>
+<button class="close-btn" onclick="closeMaterialPopup()">X</button>
+</div>
 
-    <div class="modal-header">
-      <h2>📦 Material Ticket</h2>
-      <button class="close-btn" onclick="closeMaterialPopup()">X</button>
-    </div>
+<input id="matSearch"
+placeholder="Cari material..."
+style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px">
 
-    <input id="matSearch"
-      placeholder="Cari material..."
-      style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px">
+<table>
+<thead>
+<tr>
+<th>No</th>
+<th>Nama</th>
+<th>Satuan</th>
+<th>Harga</th>
+<th>Qty</th>
+<th>Total</th>
+</tr>
+</thead>
 
-    <table>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>Nama</th>
-          <th>Satuan</th>
-          <th>Harga</th>
-          <th>Qty</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody id="matBody"></tbody>
-    </table>
+<tbody id="matBody"></tbody>
+</table>
 
-  </div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script src="./js/syncEngine.js"></script>
 <script src="./js/index.js"></script>
-<script src="./js/Addtiket.js"></script>
 <script src="./material/material.js"></script>
+
+<!-- HAPUS addtiket.js dari dashboard -->
 
 </body>
 </html>

@@ -36,16 +36,34 @@ function saveNote(id, value){
 }
 
 /* =========================
+   SAVE STATUS
+========================= */
+function saveStatus(id, value){
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+
+  if(idx === -1) return;
+
+  tickets[idx].status = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  loadSummary();
+  loadTable(search ? search.value : "");
+}
+
+/* =========================
    SUMMARY
 ========================= */
 function loadSummary(){
 
   refreshData();
 
-  const tot   = document.getElementById("totTicket");
-  const open  = document.getElementById("openTicket");
-  const close = document.getElementById("closeTicket");
-  const mat   = document.getElementById("matCount");
+  const tot      = document.getElementById("totTicket");
+  const open     = document.getElementById("openTicket");
+  const progress = document.getElementById("progressTicket");
+  const close    = document.getElementById("closeTicket");
+  const pending  = document.getElementById("pendingTicket");
+  const mat      = document.getElementById("matCount");
 
   if(tot) tot.textContent = data.length;
 
@@ -54,9 +72,19 @@ function loadSummary(){
       data.filter(x => (x.status || "").toLowerCase() === "open").length;
   }
 
+  if(progress){
+    progress.textContent =
+      data.filter(x => (x.status || "").toLowerCase() === "progress").length;
+  }
+
   if(close){
     close.textContent =
       data.filter(x => (x.status || "").toLowerCase() === "close").length;
+  }
+
+  if(pending){
+    pending.textContent =
+      data.filter(x => (x.status || "").toLowerCase() === "pending").length;
   }
 
   if(mat){
@@ -66,7 +94,7 @@ function loadSummary(){
 }
 
 /* =========================
-   TABLE RENDER
+   TABLE
 ========================= */
 function loadTable(filter = ""){
 
@@ -87,14 +115,6 @@ function loadTable(filter = ""){
 
   body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
 
-    let status = (x.status || "").toLowerCase();
-
-    let color = "#999";
-
-    if(status === "open") color = "#e74c3c";
-    if(status === "close") color = "#27ae60";
-    if(status === "progress") color = "#f39c12";
-
     return `
     <tr>
       <td>${i+1}</td>
@@ -105,16 +125,20 @@ function loadTable(filter = ""){
       <td>${x.city || ""}</td>
 
       <td>
-        <span class="status"
+        <select
+          onchange="updateStatus('${x.id}', this.value)"
           style="
-            background:${color};
-            color:#fff;
-            padding:4px 10px;
-            border-radius:20px;
-            font-size:12px;
+            padding:6px;
+            border-radius:8px;
+            border:1px solid #ccc;
             font-weight:bold;">
-          ${x.status || ""}
-        </span>
+
+          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+
+        </select>
       </td>
 
       <td>
@@ -160,10 +184,14 @@ function loadTable(filter = ""){
 }
 
 /* =========================
-   UPDATE NOTE
+   UPDATE
 ========================= */
 window.updateNote = function(id,val){
   saveNote(id,val);
+};
+
+window.updateStatus = function(id,val){
+  saveStatus(id,val);
 };
 
 /* =========================
@@ -173,14 +201,6 @@ if(search){
   search.addEventListener("input", function(){
     loadTable(this.value);
   });
-}
-
-/* =========================
-   FIND INDEX
-========================= */
-function findIndexById(id){
-  refreshData();
-  return data.findIndex(x => x.id == id);
 }
 
 /* =========================
@@ -213,7 +233,6 @@ window.editTicketById = function(id){
   x.project  = prompt("Project", x.project) || x.project;
   x.spk      = prompt("SPK", x.spk) || x.spk;
   x.city     = prompt("City", x.city) || x.city;
-  x.status   = prompt("Status", x.status) || x.status;
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
@@ -242,16 +261,13 @@ window.hapusTicketById = function(id){
 };
 
 /* =========================
-   EVENT REFRESH
+   INIT
 ========================= */
 window.addEventListener("ticketsUpdated", function () {
   loadSummary();
   loadTable(search ? search.value : "");
 });
 
-/* =========================
-   INIT
-========================= */
 loadSummary();
 loadTable();
 

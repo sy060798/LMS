@@ -71,20 +71,26 @@ function loadTable(filter=""){
     <td>${x.city || ""}</td>
     <td><span class="status">${x.status || ""}</span></td>
 
-    <td>
-    <div class="aksi">
+   <td>
+  <div class="aksi">
 
-    <button class="icon-btn box-btn"
-    onclick="openMaterialById('${x.id}')">📦</button>
+    <button type="button" class="icon-btn box-btn"
+      onclick="openMaterialById('${x.id}')">
+      📦
+    </button>
 
-    <button class="icon-btn edit-btn"
-    onclick="editTicketById('${x.id}')">✏️</button>
+    <button type="button" class="icon-btn edit-btn"
+      onclick="editTicketById('${x.id}')">
+      ✏️
+    </button>
 
-    <button class="icon-btn del-btn"
-    onclick="hapusTicketById('${x.id}')">🗑️</button>
+    <button type="button" class="icon-btn del-btn"
+      onclick="hapusTicketById('${x.id}')">
+      🗑️
+    </button>
 
-    </div>
-    </td>
+  </div>
+</td>
     </tr>
     `;
 

@@ -23,6 +23,19 @@ function refreshData(){
 }
 
 /* =========================
+   SAVE NOTE
+========================= */
+function saveNote(id, value){
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+
+  if(idx === -1) return;
+
+  tickets[idx].note = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+}
+
+/* =========================
    SUMMARY
 ========================= */
 function loadSummary(){
@@ -71,32 +84,48 @@ function loadTable(filter=""){
     <td>${x.city || ""}</td>
     <td><span class="status">${x.status || ""}</span></td>
 
-   <td>
-  <div class="aksi">
+    <td>
+      <input 
+        type="text"
+        value="${x.note || ""}"
+        placeholder="Isi note..."
+        oninput="updateNote('${x.id}', this.value)"
+        style="width:140px;padding:4px;border-radius:6px;border:1px solid #ccc;">
+    </td>
 
-    <button type="button" class="icon-btn box-btn"
-      onclick="openMaterialById('${x.id}')">
-      📦
-    </button>
+    <td>
+      <div class="aksi">
 
-    <button type="button" class="icon-btn edit-btn"
-      onclick="editTicketById('${x.id}')">
-      ✏️
-    </button>
+        <button type="button" class="icon-btn box-btn"
+          onclick="openMaterialById('${x.id}')">
+          📦
+        </button>
 
-    <button type="button" class="icon-btn del-btn"
-      onclick="hapusTicketById('${x.id}')">
-      🗑️
-    </button>
+        <button type="button" class="icon-btn edit-btn"
+          onclick="editTicketById('${x.id}')">
+          ✏️
+        </button>
 
-  </div>
-</td>
+        <button type="button" class="icon-btn del-btn"
+          onclick="hapusTicketById('${x.id}')">
+          🗑️
+        </button>
+
+      </div>
+    </td>
     </tr>
     `;
 
   }).join("");
 
 }
+
+/* =========================
+   UPDATE NOTE
+========================= */
+window.updateNote = function(id,val){
+  saveNote(id,val);
+};
 
 /* =========================
    SEARCH
@@ -174,125 +203,13 @@ window.hapusTicketById = function(id){
 };
 
 /* =========================
-   🔥 EXPORT EXCEL FIX (INI YANG KAMU BUTUH)
-========================= */
-window.exportExcel = function () {
-
-  let data = JSON.parse(localStorage.getItem("tickets") || "[]");
-
-  if (!data || data.length === 0) {
-    alert("Data kosong");
-    return;
-  }
-
-  let sheetData = [];
-
-  // =========================
-  // 🔥 HEADER
-  // =========================
-  let header = [
-    "No",
-    "Customer",
-    "Project",
-    "SPK",
-    "Tanggal",
-    "City",
-    "Status",
-    "Material"
-  ];
-
-  sheetData.push(header);
-
-  // =========================
-  // 🔥 DATA
-  // =========================
-  data.forEach((t, index) => {
-
-    let row = [
-      index + 1,
-      t.customer || "",
-      t.project || "",
-      t.spk || "",
-      t.tanggal || "",
-      t.city || "",
-      t.status || ""
-    ];
-
-    // 🔥 MATERIAL (HANYA YANG ADA QTY > 0)
-    if (t.material && t.material.length > 0) {
-
-      t.material
-        .filter(m => m.qty > 0)
-        .forEach(m => {
-          row.push(m.nama);
-          row.push(m.qty);
-        });
-    }
-
-    sheetData.push(row);
-  });
-
-  let ws = XLSX.utils.aoa_to_sheet(sheetData);
-  let wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Tickets");
-
-  // =========================
-  // 🔵 HEADER STYLE
-  // =========================
-  let range = XLSX.utils.decode_range(ws['!ref']);
-
-  for (let C = 0; C <= range.e.c; C++) {
-    let cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
-    if (!cell) continue;
-
-    cell.s = {
-      font: { bold: true, color: { rgb: "FFFFFF" } },
-      fill: { fgColor: { rgb: "1F4E78" } },
-      alignment: { horizontal: "center" }
-    };
-  }
-
-  // =========================
-  // 🟡 WARNA QTY
-  // =========================
-  for (let R = 1; R <= range.e.r; R++) {
-    for (let C = 7; C <= range.e.c; C++) {
-
-      // kolom qty (setiap kolom genap setelah material)
-      if ((C - 7) % 2 === 1) {
-        let cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
-        if (!cell) continue;
-
-        cell.s = {
-          fill: { fgColor: { rgb: "FFF2CC" } },
-          alignment: { horizontal: "center" }
-        };
-      }
-    }
-  }
-
-  // =========================
-  // 📏 AUTO WIDTH
-  // =========================
-  ws['!cols'] = sheetData[0].map((_, i) => {
-    if (i <= 6) return { wch: 20 };
-    return { wch: 25 };
-  });
-
-  XLSX.writeFile(wb, "tickets.xlsx");
-};
-
-/* =========================
-   INIT SYNC EVENT
+   INIT
 ========================= */
 window.addEventListener("ticketsUpdated", function () {
   loadSummary();
   loadTable(search ? search.value : "");
 });
 
-/* =========================
-   INIT LOAD
-========================= */
 loadSummary();
 loadTable();
 

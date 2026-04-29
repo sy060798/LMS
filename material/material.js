@@ -41,28 +41,32 @@ document.addEventListener("DOMContentLoaded", function () {
   /* =========================
      OPEN POPUP
   ========================= */
-  window.openMaterialPopup = function () {
+ window.openMaterialPopup = function () {
 
-    const ticket = getTicket();
+  const ticket = getTicket();
 
-    if (!ticket) {
-      alert("❌ Ticket belum dipilih");
-      return;
-    }
+  if (!ticket) {
+    alert("❌ Ticket belum dipilih");
+    return;
+  }
 
-    materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
+  materials = JSON.parse(JSON.stringify(MASTER_MATERIAL));
 
-    if (ticket.material) {
-      materials = materials.map(m => {
-        let old = ticket.material.find(x => x.nama === m.nama);
-        return { ...m, qty: old ? old.qty : 0 };
-      });
-    }
+  if (ticket.material) {
+    materials = materials.map(m => {
+      let old = ticket.material.find(x => x.nama === m.nama);
+      return { ...m, qty: old ? old.qty : 0 };
+    });
+  }
 
-    popup.style.display = "flex";
-    render("");
-  };
+  popup.style.display = "flex";
+  render("");
+};
 
+window.openMaterialById = function(id){
+  localStorage.setItem("activeTicketId", id);
+  openMaterialPopup();
+};
   /* =========================
      CLOSE
   ========================= */

@@ -42,82 +42,121 @@ function loadSummary(){
 
   refreshData();
 
-  const tot = document.getElementById("totTicket");
-  const open = document.getElementById("openTicket");
+  const tot   = document.getElementById("totTicket");
+  const open  = document.getElementById("openTicket");
   const close = document.getElementById("closeTicket");
-  const mat = document.getElementById("matCount");
+  const mat   = document.getElementById("matCount");
 
   if(tot) tot.textContent = data.length;
 
-  if(open) open.textContent =
-    data.filter(x => x.status === "Open").length;
+  if(open){
+    open.textContent =
+      data.filter(x => (x.status || "").toLowerCase() === "open").length;
+  }
 
-  if(close) close.textContent =
-    data.filter(x => x.status === "Close").length;
+  if(close){
+    close.textContent =
+      data.filter(x => (x.status || "").toLowerCase() === "close").length;
+  }
 
-  if(mat) mat.textContent =
-    data.filter(x => x.material && x.material.length > 0).length;
+  if(mat){
+    mat.textContent =
+      data.filter(x => x.material && x.material.length > 0).length;
+  }
 }
 
 /* =========================
    TABLE RENDER
 ========================= */
-function loadTable(filter=""){
+function loadTable(filter = ""){
 
   refreshData();
 
-  let rows = data.filter(x =>
-    (x.project || "").toLowerCase().includes(filter.toLowerCase())
-  );
+  let rows = data.filter(x => {
+    let key = filter.toLowerCase();
+
+    return (
+      (x.customer || "").toLowerCase().includes(key) ||
+      (x.project || "").toLowerCase().includes(key) ||
+      (x.spk || "").toLowerCase().includes(key) ||
+      (x.city || "").toLowerCase().includes(key)
+    );
+  });
 
   if(!body) return;
 
   body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
 
+    let status = (x.status || "").toLowerCase();
+
+    let color = "#999";
+
+    if(status === "open") color = "#e74c3c";
+    if(status === "close") color = "#27ae60";
+    if(status === "progress") color = "#f39c12";
+
     return `
     <tr>
-    <td>${i+1}</td>
-    <td>${x.customer || ""}</td>
-    <td>${x.project || ""}</td>
-    <td>${x.spk || ""}</td>
-    <td>${x.tanggal || ""}</td>
-    <td>${x.city || ""}</td>
-    <td><span class="status">${x.status || ""}</span></td>
+      <td>${i+1}</td>
+      <td>${x.customer || ""}</td>
+      <td>${x.project || ""}</td>
+      <td>${x.spk || ""}</td>
+      <td>${x.tanggal || ""}</td>
+      <td>${x.city || ""}</td>
 
-    <td>
-      <input 
-        type="text"
-        value="${x.note || ""}"
-        placeholder="Isi note..."
-        oninput="updateNote('${x.id}', this.value)"
-        style="width:140px;padding:4px;border-radius:6px;border:1px solid #ccc;">
-    </td>
+      <td>
+        <span class="status"
+          style="
+            background:${color};
+            color:#fff;
+            padding:4px 10px;
+            border-radius:20px;
+            font-size:12px;
+            font-weight:bold;">
+          ${x.status || ""}
+        </span>
+      </td>
 
-    <td>
-      <div class="aksi">
+      <td>
+        <input
+          type="text"
+          value="${x.note || ""}"
+          placeholder="Isi note..."
+          oninput="updateNote('${x.id}', this.value)"
+          style="
+            width:150px;
+            padding:6px;
+            border:1px solid #ccc;
+            border-radius:8px;">
+      </td>
 
-        <button type="button" class="icon-btn box-btn"
-          onclick="openMaterialById('${x.id}')">
-          📦
-        </button>
+      <td>
+        <div class="aksi">
 
-        <button type="button" class="icon-btn edit-btn"
-          onclick="editTicketById('${x.id}')">
-          ✏️
-        </button>
+          <button type="button"
+            class="icon-btn box-btn"
+            onclick="openMaterialById('${x.id}')">
+            📦
+          </button>
 
-        <button type="button" class="icon-btn del-btn"
-          onclick="hapusTicketById('${x.id}')">
-          🗑️
-        </button>
+          <button type="button"
+            class="icon-btn edit-btn"
+            onclick="editTicketById('${x.id}')">
+            ✏️
+          </button>
 
-      </div>
-    </td>
+          <button type="button"
+            class="icon-btn del-btn"
+            onclick="hapusTicketById('${x.id}')">
+            🗑️
+          </button>
+
+        </div>
+      </td>
     </tr>
     `;
 
   }).join("");
-
 }
 
 /* =========================
@@ -137,10 +176,11 @@ if(search){
 }
 
 /* =========================
-   FIND
+   FIND INDEX
 ========================= */
 function findIndexById(id){
-  return data.findIndex(x => x.id === id);
+  refreshData();
+  return data.findIndex(x => x.id == id);
 }
 
 /* =========================
@@ -154,7 +194,6 @@ window.openMaterialById = function(id){
   if(!t) return;
 
   localStorage.setItem("activeTicketId", t.id);
-
   window.location.href = "material/material.html";
 };
 
@@ -164,7 +203,7 @@ window.openMaterialById = function(id){
 window.editTicketById = function(id){
 
   let tickets = getLocal();
-  let idx = findIndexById(id);
+  let idx = tickets.findIndex(x => x.id == id);
 
   if(idx === -1) return;
 
@@ -179,7 +218,7 @@ window.editTicketById = function(id){
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
   loadSummary();
-  loadTable(search.value);
+  loadTable(search ? search.value : "");
 };
 
 /* =========================
@@ -190,7 +229,7 @@ window.hapusTicketById = function(id){
   if(!confirm("Hapus ticket ini?")) return;
 
   let tickets = getLocal();
-  let idx = findIndexById(id);
+  let idx = tickets.findIndex(x => x.id == id);
 
   if(idx === -1) return;
 
@@ -199,17 +238,20 @@ window.hapusTicketById = function(id){
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
   loadSummary();
-  loadTable(search.value);
+  loadTable(search ? search.value : "");
 };
 
 /* =========================
-   INIT
+   EVENT REFRESH
 ========================= */
 window.addEventListener("ticketsUpdated", function () {
   loadSummary();
   loadTable(search ? search.value : "");
 });
 
+/* =========================
+   INIT
+========================= */
 loadSummary();
 loadTable();
 

@@ -16,7 +16,7 @@ function getLocal(){
 }
 
 /* =========================
-   REFRESH DATA
+   REFRESH
 ========================= */
 function refreshData(){
   data = getLocal();
@@ -28,7 +28,6 @@ function refreshData(){
 function saveNote(id, value){
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
-
   if(idx === -1) return;
 
   tickets[idx].note = value;
@@ -41,14 +40,14 @@ function saveNote(id, value){
 function saveStatus(id, value){
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
-
   if(idx === -1) return;
 
   tickets[idx].status = value;
   localStorage.setItem("tickets", JSON.stringify(tickets));
 
-  loadSummary();
-  loadTable(search ? search.value : "");
+  requestAnimationFrame(() => {
+    loadSummary();
+  });
 }
 
 /* =========================
@@ -66,48 +65,27 @@ function loadSummary(){
   const mat      = document.getElementById("matCount");
 
   if(tot) tot.textContent = data.length;
-
-  if(open){
-    open.textContent =
-      data.filter(x => (x.status || "").toLowerCase() === "open").length;
-  }
-
-  if(progress){
-    progress.textContent =
-      data.filter(x => (x.status || "").toLowerCase() === "progress").length;
-  }
-
-  if(close){
-    close.textContent =
-      data.filter(x => (x.status || "").toLowerCase() === "close").length;
-  }
-
-  if(pending){
-    pending.textContent =
-      data.filter(x => (x.status || "").toLowerCase() === "pending").length;
-  }
-
-  if(mat){
-    mat.textContent =
-      data.filter(x => x.material && x.material.length > 0).length;
-  }
+  if(open) open.textContent = data.filter(x => x.status=="Open").length;
+  if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
+  if(close) close.textContent = data.filter(x => x.status=="Close").length;
+  if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
+  if(mat) mat.textContent = data.filter(x => x.material && x.material.length > 0).length;
 }
 
 /* =========================
    TABLE
 ========================= */
-function loadTable(filter = ""){
+function loadTable(filter=""){
 
   refreshData();
 
-  let rows = data.filter(x => {
-    let key = filter.toLowerCase();
-
+  let rows = data.filter(x=>{
+    let k = filter.toLowerCase();
     return (
-      (x.customer || "").toLowerCase().includes(key) ||
-      (x.project || "").toLowerCase().includes(key) ||
-      (x.spk || "").toLowerCase().includes(key) ||
-      (x.city || "").toLowerCase().includes(key)
+      (x.customer || "").toLowerCase().includes(k) ||
+      (x.project || "").toLowerCase().includes(k) ||
+      (x.spk || "").toLowerCase().includes(k) ||
+      (x.city || "").toLowerCase().includes(k)
     );
   });
 
@@ -128,10 +106,14 @@ function loadTable(filter = ""){
         <select
           onchange="updateStatus('${x.id}', this.value)"
           style="
-            padding:6px;
-            border-radius:8px;
-            border:1px solid #ccc;
-            font-weight:bold;">
+            padding:7px 10px;
+            min-width:110px;
+            border-radius:10px;
+            border:1px solid #d0d0d0;
+            background:#fff;
+            cursor:pointer;
+            font-weight:600;
+            outline:none;">
 
           <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
           <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
@@ -148,30 +130,52 @@ function loadTable(filter = ""){
           placeholder="Isi note..."
           oninput="updateNote('${x.id}', this.value)"
           style="
-            width:150px;
-            padding:6px;
-            border:1px solid #ccc;
-            border-radius:8px;">
+            width:160px;
+            padding:7px 10px;
+            border:1px solid #dcdcdc;
+            border-radius:10px;
+            outline:none;">
       </td>
 
       <td>
-        <div class="aksi">
+        <div style="display:flex;gap:6px;justify-content:center;">
 
-          <button type="button"
-            class="icon-btn box-btn"
-            onclick="openMaterialById('${x.id}')">
+          <button
+            onclick="openMaterialById('${x.id}')"
+            style="
+              border:none;
+              padding:8px 10px;
+              border-radius:10px;
+              cursor:pointer;
+              background:#3498db;
+              color:#fff;
+              font-size:15px;">
             📦
           </button>
 
-          <button type="button"
-            class="icon-btn edit-btn"
-            onclick="editTicketById('${x.id}')">
+          <button
+            onclick="editTicketById('${x.id}')"
+            style="
+              border:none;
+              padding:8px 10px;
+              border-radius:10px;
+              cursor:pointer;
+              background:#f39c12;
+              color:#fff;
+              font-size:15px;">
             ✏️
           </button>
 
-          <button type="button"
-            class="icon-btn del-btn"
-            onclick="hapusTicketById('${x.id}')">
+          <button
+            onclick="hapusTicketById('${x.id}')"
+            style="
+              border:none;
+              padding:8px 10px;
+              border-radius:10px;
+              cursor:pointer;
+              background:#e74c3c;
+              color:#fff;
+              font-size:15px;">
             🗑️
           </button>
 
@@ -179,7 +183,6 @@ function loadTable(filter = ""){
       </td>
     </tr>
     `;
-
   }).join("");
 }
 
@@ -207,13 +210,7 @@ if(search){
    OPEN MATERIAL
 ========================= */
 window.openMaterialById = function(id){
-
-  let tickets = getLocal();
-  let t = tickets.find(x => x.id == id);
-
-  if(!t) return;
-
-  localStorage.setItem("activeTicketId", t.id);
+  localStorage.setItem("activeTicketId", id);
   window.location.href = "material/material.html";
 };
 
@@ -224,7 +221,6 @@ window.editTicketById = function(id){
 
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
-
   if(idx === -1) return;
 
   let x = tickets[idx];
@@ -249,7 +245,6 @@ window.hapusTicketById = function(id){
 
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
-
   if(idx === -1) return;
 
   tickets.splice(idx,1);
@@ -263,7 +258,7 @@ window.hapusTicketById = function(id){
 /* =========================
    INIT
 ========================= */
-window.addEventListener("ticketsUpdated", function () {
+window.addEventListener("ticketsUpdated", function(){
   loadSummary();
   loadTable(search ? search.value : "");
 });

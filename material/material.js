@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", function () {
   /* =========================
      MASTER DATA
   ========================= */
-  const MASTER_MATERIAL = [
+ const MASTER_MATERIAL = [
   // ================= A. MATERIAL =================
   { nama: "Kabel Udara ADSS Span 100 12 Core", satuan: "Meter", harga: 10000 },
   { nama: "Kabel Udara ADSS Span 100 24 Core", satuan: "Meter", harga: 12000 },
@@ -152,7 +152,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (ticket.material) {
       materials = materials.map(m => {
         let old = ticket.material.find(x => x.nama === m.nama);
-        return { ...m, qty: old ? old.qty : 0 };
+        return {
+          ...m,
+          qty: old ? old.qty : 0,
+          harga: old ? old.harga : m.harga
+        };
       });
     }
 
@@ -161,7 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
   };
 
   /* =========================
-     OPEN BY ID (DARI TABEL)
+     OPEN BY ID
   ========================= */
   window.openMaterialById = function (id) {
     localStorage.setItem("activeTicketId", id);
@@ -180,9 +184,11 @@ document.addEventListener("DOMContentLoaded", function () {
      AUTO SAVE
   ========================= */
   function commit() {
+
     clearTimeout(saveTimer);
 
     saveTimer = setTimeout(() => {
+
       let tickets = DB.get();
       let id = localStorage.getItem("activeTicketId");
 
@@ -194,12 +200,14 @@ document.addEventListener("DOMContentLoaded", function () {
         .map(m => ({
           nama: m.nama,
           satuan: m.satuan,
-          harga: m.harga,
-          qty: m.qty
+          harga: Number(m.harga),
+          qty: Number(m.qty)
         }));
 
       DB.save(tickets);
+
       console.log("💾 Material saved");
+
     }, 200);
   }
 
@@ -207,24 +215,34 @@ document.addEventListener("DOMContentLoaded", function () {
      RENDER TABLE
   ========================= */
   function render(filter = "") {
+
     body.innerHTML = "";
 
     materials
       .filter(m => m.nama.toLowerCase().includes(filter.toLowerCase()))
       .forEach((m, i) => {
 
-        let total = (m.qty || 0) * m.harga;
+        let total = (m.qty || 0) * (m.harga || 0);
 
         body.innerHTML += `
           <tr>
             <td>${i + 1}</td>
             <td>${m.nama}</td>
             <td>${m.satuan}</td>
-            <td>Rp ${m.harga.toLocaleString("id-ID")}</td>
+
+            <!-- 🔥 HARGA BISA DI EDIT -->
+            <td>
+              <input type="number" min="0" value="${m.harga}"
+                onchange="setHarga('${m.nama}', this.value)"
+                style="width:100px">
+            </td>
+
+            <!-- 🔥 QTY BISA DI EDIT -->
             <td>
               <input type="number" min="0" value="${m.qty || 0}"
                 onchange="setQty('${m.nama}', this.value)">
             </td>
+
             <td>Rp ${total.toLocaleString("id-ID")}</td>
           </tr>
         `;
@@ -235,10 +253,26 @@ document.addEventListener("DOMContentLoaded", function () {
      UPDATE QTY
   ========================= */
   window.setQty = function (nama, val) {
+
     let item = materials.find(x => x.nama === nama);
     if (!item) return;
 
     item.qty = Number(val);
+
+    commit();
+    render(search.value || "");
+  };
+
+  /* =========================
+     🔥 UPDATE HARGA (BARU)
+  ========================= */
+  window.setHarga = function (nama, val) {
+
+    let item = materials.find(x => x.nama === nama);
+    if (!item) return;
+
+    item.harga = Number(val);
+
     commit();
     render(search.value || "");
   };

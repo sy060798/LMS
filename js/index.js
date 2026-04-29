@@ -185,94 +185,61 @@ window.exportExcel = function () {
     return;
   }
 
-  // 🔥 FORMAT SESUAI STRUCTURE MATERIAL.JS
-  let formattedData = data.map((item, index) => {
+  let sheetData = [];
 
-    let materialText = "";
-    let totalMaterial = 0;
+  // =========================
+  // 🔥 HEADER
+  // =========================
+  let header = ["ID", "City", "Material"];
+  sheetData.push(header);
 
-    if (item.material && item.material.length > 0) {
+  // =========================
+  // 🔥 DATA
+  // =========================
+  data.forEach(t => {
 
-      materialText = item.material.map(m => {
-        let subtotal = m.qty * m.harga;
-        totalMaterial += subtotal;
+    let row = [
+      t.id || "",
+      t.city || ""
+    ];
 
-        return `${m.nama}
-${m.qty} ${m.satuan} x Rp ${m.harga.toLocaleString("id-ID")} = Rp ${subtotal.toLocaleString("id-ID")}`;
-      }).join("\n\n");
-
+    if (t.material && t.material.length > 0) {
+      t.material.forEach(m => {
+        row.push(m.nama);
+        row.push(m.qty);
+      });
     }
 
-    return {
-      no: index + 1,
-      customer: item.customer || "",
-      project: item.project || "",
-      spk: item.spk || "",
-      tanggal: item.tanggal || "",
-      city: item.city || "",
-      status: item.status || "",
-      ket: item.ket || "",
-      id: item.id || "",
-      material: materialText || "-",
-      total_material: totalMaterial
-    };
+    sheetData.push(row);
   });
 
-  let ws = XLSX.utils.json_to_sheet(formattedData, { cellStyles: true });
-
+  let ws = XLSX.utils.aoa_to_sheet(sheetData);
   let wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Tickets");
 
+  // =========================
+  // 🔵 HEADER STYLE
+  // =========================
   let range = XLSX.utils.decode_range(ws['!ref']);
-  let headers = Object.keys(formattedData[0]);
 
-  // =========================
-  // 🔵 HEADER BIRU TUA
-  // =========================
-  for (let C = 0; C < headers.length; C++) {
-
+  for (let C = 0; C <= range.e.c; C++) {
     let cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
     if (!cell) continue;
 
     cell.s = {
       font: { bold: true, color: { rgb: "FFFFFF" } },
       fill: { fgColor: { rgb: "1F4E78" } },
-      alignment: { horizontal: "center", vertical: "center" }
+      alignment: { horizontal: "center" }
     };
-  }
-
-  // =========================
-  // 🟡 KOLOM MATERIAL KUNING
-  // =========================
-  let materialIndex = headers.indexOf("material");
-
-  if (materialIndex !== -1) {
-    for (let R = 1; R <= range.e.r; R++) {
-
-      let cell = ws[XLSX.utils.encode_cell({ r: R, c: materialIndex })];
-      if (!cell) continue;
-
-      cell.s = {
-        alignment: { wrapText: true, vertical: "top" },
-        fill: { fgColor: { rgb: "FFF2CC" } }
-      };
-    }
   }
 
   // =========================
   // 📏 AUTO WIDTH
   // =========================
-  ws['!cols'] = headers.map(h => {
+  ws['!cols'] = sheetData[0].map((_, i) => ({
+    wch: i < 2 ? 20 : 18
+  }));
 
-    if (h === "material") return { wch: 60 };
-    if (h === "project") return { wch: 40 };
-
-    return { wch: 20 };
-  });
-
-  // =========================
-  // 🔥 EXPORT
-  // =========================
   XLSX.writeFile(wb, "tickets.xlsx");
 };
 

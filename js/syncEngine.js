@@ -3,6 +3,42 @@
 const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
+   TOAST NOTIFICATION
+========================= */
+function showToast(msg, type = "success") {
+
+  let toast = document.createElement("div");
+
+  toast.textContent = msg;
+
+  toast.style.position = "fixed";
+  toast.style.bottom = "20px";
+  toast.style.right = "20px";
+  toast.style.padding = "12px 16px";
+  toast.style.borderRadius = "8px";
+  toast.style.color = "#fff";
+  toast.style.fontSize = "14px";
+  toast.style.zIndex = "9999";
+  toast.style.boxShadow = "0 5px 15px rgba(0,0,0,0.2)";
+  toast.style.transition = "0.3s ease";
+
+  if (type === "success") {
+    toast.style.background = "#28a745";
+  } else if (type === "error") {
+    toast.style.background = "#dc3545";
+  } else {
+    toast.style.background = "#333";
+  }
+
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
+/* =========================
    LOCAL DB
 ========================= */
 const DB = {
@@ -19,7 +55,9 @@ const DB = {
    GET ACTIVE
 ========================= */
 function getActiveTicket(){
-  return DB.getTickets().find(t => t.id == DB.getActiveSpk());
+  const id = DB.getActiveSpk();
+  if(!id) return null;
+  return DB.getTickets().find(t => t.id == id);
 }
 
 /* =========================
@@ -29,8 +67,10 @@ function cleanBeforeSave(tickets){
 
   return tickets.map(t => {
 
-    if(Array.isArray(t.material)){
-      t.material = t.material
+    let copy = { ...t };
+
+    if(Array.isArray(copy.material)){
+      copy.material = copy.material
         .filter(m => Number(m.qty) > 0)
         .map(m => ({
           nama: m.nama,
@@ -40,13 +80,13 @@ function cleanBeforeSave(tickets){
         }));
     }
 
-    return t;
+    return copy;
   });
 
 }
 
 /* =========================
-   SAVE (MANUAL ONLY)
+   SAVE ALL (SERVER SYNC)
 ========================= */
 async function saveAll(){
 
@@ -57,7 +97,7 @@ async function saveAll(){
 
     DB.saveTickets(cleaned);
 
-    await fetch(SERVER_URL + "/api/save", {
+    let res = await fetch(SERVER_URL + "/api/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -66,24 +106,36 @@ async function saveAll(){
       })
     });
 
+    if(!res.ok){
+      showToast("❌ Server error saat save", "error");
+      return;
+    }
+
     window.dispatchEvent(new Event("ticketsUpdated"));
 
+    showToast("✔ Data berhasil disimpan", "success");
     console.log("✔ SAVE OK");
 
   } catch (e) {
+    showToast("❌ Gagal sync data", "error");
     console.log("SAVE ERROR", e);
   }
 }
 
 /* =========================
-   LOAD (MANUAL ONLY)
-   👉 tidak auto load biar tidak “tenggelam”
+   LOAD ALL (MERGE SERVER + LOCAL)
 ========================= */
 async function loadAll(){
 
   try {
 
     let res = await fetch(SERVER_URL + "/api/get?type=LMS");
+
+    if(!res.ok){
+      showToast("❌ Gagal load server data", "error");
+      return;
+    }
+
     let serverData = await res.json();
 
     if(!Array.isArray(serverData)) return;
@@ -95,7 +147,7 @@ async function loadAll(){
     // LOCAL PRIORITY
     localData.forEach(t => map.set(t.id, t));
 
-    // SERVER fill missing only
+    // SERVER FILL
     serverData.forEach(t => {
       if(!map.has(t.id)){
         map.set(t.id, t);
@@ -108,21 +160,17 @@ async function loadAll(){
 
     window.dispatchEvent(new Event("ticketsUpdated"));
 
+    showToast("✔ Data sync berhasil", "success");
     console.log("✔ LOAD MERGED OK");
 
   } catch (e) {
+    showToast("❌ Load gagal", "error");
     console.log("LOAD ERROR", e);
   }
 }
 
 /* =========================
-   ❌ AUTO LOAD DIMATIKAN
-   ❌ AUTO SAVE LOOP DIMATIKAN
-========================= */
-// (SENGAJA DIHAPUS biar manual saja)
-
-/* =========================
-   MANUAL TRIGGER ONLY
+   MANUAL TRIGGER
 ========================= */
 window.saveNow = saveAll;
 window.loadNow = loadAll;
@@ -135,5 +183,23 @@ window.FS = {
   saveAll,
   loadAll
 };
+
+/* =========================
+   AUTO LOAD SAAT BUKA WEB
+========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  if(window.FS && FS.loadAll){
+    FS.loadAll();
+  }
+});
+
+/* =========================
+   AUTO SYNC SAAT ADA PERUBAHAN
+========================= */
+window.addEventListener("ticketsUpdated", () => {
+  if(window.FS && FS.saveAll){
+    FS.saveAll();
+  }
+});
 
 })();

@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
 let data = [];
+let noteTimer = {};
 
 /* =========================
    ELEMENT
@@ -23,21 +24,29 @@ function refreshData(){
 }
 
 /* =========================
-   SAVE NOTE
+   SAVE NOTE (DELAY)
 ========================= */
 function saveNote(id,value){
-  let tickets = getLocal();
-  let idx = tickets.findIndex(x => x.id == id);
-  if(idx === -1) return;
 
-  tickets[idx].note = value;
-  localStorage.setItem("tickets", JSON.stringify(tickets));
+  clearTimeout(noteTimer[id]);
+
+  noteTimer[id] = setTimeout(()=>{
+
+    let tickets = getLocal();
+    let idx = tickets.findIndex(x => x.id == id);
+    if(idx === -1) return;
+
+    tickets[idx].note = value;
+    localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  },500);
 }
 
 /* =========================
    SAVE STATUS
 ========================= */
 function saveStatus(id,value){
+
   let tickets = getLocal();
   let idx = tickets.findIndex(x => x.id == id);
   if(idx === -1) return;
@@ -78,6 +87,7 @@ function loadTable(filter=""){
   refreshData();
 
   let rows = data.filter(x=>{
+
     let k = filter.toLowerCase();
 
     return (
@@ -86,6 +96,7 @@ function loadTable(filter=""){
       (x.spk || "").toLowerCase().includes(k) ||
       (x.city || "").toLowerCase().includes(k)
     );
+
   });
 
   if(!body) return;
@@ -101,18 +112,15 @@ function loadTable(filter=""){
       <td>${x.tanggal || ""}</td>
       <td>${x.city || ""}</td>
 
-      <!-- STATUS -->
       <td>
         <select
           onchange="updateStatus('${x.id}',this.value)"
-          onfocus="this.style.color='#000'"
-          onblur="if(this.value==''){this.style.color='#999'}"
           style="
-            padding:7px 10px;
-            min-width:120px;
+            padding:8px 10px;
+            min-width:125px;
             border-radius:10px;
             border:1px solid #ddd;
-            color:${x.status ? '#000' : '#999'};
+            cursor:pointer;
             background:#fff;">
 
           <option value="">Pilih...</option>
@@ -124,21 +132,19 @@ function loadTable(filter=""){
         </select>
       </td>
 
-      <!-- NOTE -->
       <td>
         <input
           type="text"
           value="${x.note || ""}"
           placeholder="Isi note..."
-          oninput="updateNote('${x.id}',this.value)"
+          onkeyup="updateNote('${x.id}',this.value)"
           style="
-            width:160px;
-            padding:7px 10px;
+            width:170px;
+            padding:8px 10px;
             border:1px solid #ddd;
             border-radius:10px;">
       </td>
 
-      <!-- AKSI -->
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 

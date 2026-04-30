@@ -86,7 +86,7 @@ function cleanBeforeSave(tickets){
 }
 
 /* =========================
-   SAVE ALL (SERVER SYNC)
+   SAVE ALL (MANUAL)
 ========================= */
 async function saveAll(){
 
@@ -111,10 +111,8 @@ async function saveAll(){
       return;
     }
 
-    window.dispatchEvent(new Event("ticketsUpdated"));
-
     showToast("✔ Data berhasil disimpan", "success");
-    console.log("✔ SAVE OK");
+    console.log("SAVE OK");
 
   } catch (e) {
     showToast("❌ Gagal sync data", "error");
@@ -123,7 +121,7 @@ async function saveAll(){
 }
 
 /* =========================
-   LOAD ALL (MERGE SERVER + LOCAL)
+   LOAD ALL (MANUAL)
 ========================= */
 async function loadAll(){
 
@@ -140,28 +138,12 @@ async function loadAll(){
 
     if(!Array.isArray(serverData)) return;
 
-    let localData = DB.getTickets();
-
-    let map = new Map();
-
-    // LOCAL PRIORITY
-    localData.forEach(t => map.set(t.id, t));
-
-    // SERVER FILL
-    serverData.forEach(t => {
-      if(!map.has(t.id)){
-        map.set(t.id, t);
-      }
-    });
-
-    let merged = Array.from(map.values());
-
-    DB.saveTickets(merged);
+    DB.saveTickets(serverData);
 
     window.dispatchEvent(new Event("ticketsUpdated"));
 
-    showToast("✔ Data sync berhasil", "success");
-    console.log("✔ LOAD MERGED OK");
+    showToast("✔ Data berhasil di refresh", "success");
+    console.log("LOAD OK");
 
   } catch (e) {
     showToast("❌ Load gagal", "error");
@@ -170,7 +152,7 @@ async function loadAll(){
 }
 
 /* =========================
-   MANUAL TRIGGER
+   MANUAL BUTTON
 ========================= */
 window.saveNow = saveAll;
 window.loadNow = loadAll;
@@ -185,21 +167,8 @@ window.FS = {
 };
 
 /* =========================
-   AUTO LOAD SAAT BUKA WEB
+   TANPA AUTO LOAD
+   TANPA AUTO SAVE
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  if(window.FS && FS.loadAll){
-    FS.loadAll();
-  }
-});
-
-/* =========================
-   AUTO SYNC SAAT ADA PERUBAHAN
-========================= */
-window.addEventListener("ticketsUpdated", () => {
-  if(window.FS && FS.saveAll){
-    FS.saveAll();
-  }
-});
 
 })();

@@ -89,31 +89,28 @@ function loadTable(filter = "") {
   if (!body) return;
 
   body.innerHTML = rows.map((x, i) => `
-    <tr>
+<tr>
 
-      <!-- NO AUTO -->
-      <td>${i + 1}</td>
+  <td>${i + 1}</td> <!-- FIX NO AUTO URUT -->
 
-      <td>${x.customer || ""}</td>
-      <td>${x.project || ""}</td>
-      <td>${x.spk || ""}</td>
+  <td>${x.customer || ""}</td>
+  <td>${x.project || ""}</td>
+  <td>${x.spk || ""}</td>
+  <td>${x.type || ""}</td> <!-- TYPE TAMBAH -->
+  <td>${x.tanggal || ""}</td>
+  <td>${x.city || ""}</td>
 
-      <!-- TYPE (BARU) -->
-      <td>${x.type || ""}</td>
+  <!-- STATUS -->
+  <td>
+    <select onchange="updateStatus('${x.id}',this.value)">
+      <option value="">Pilih...</option>
+      <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+      <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+      <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+      <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+    </select>
+  </td>
 
-      <td>${x.tanggal || ""}</td>
-      <td>${x.city || ""}</td>
-
-      <!-- STATUS -->
-      <td>
-        <select onchange="updateStatus('${x.id}',this.value)">
-          <option value="">Pilih...</option>
-          <option value="Open" ${x.status == "Open" ? "selected" : ""}>Open</option>
-          <option value="Progress" ${x.status == "Progress" ? "selected" : ""}>Progress</option>
-          <option value="Close" ${x.status == "Close" ? "selected" : ""}>Close</option>
-          <option value="Pending" ${x.status == "Pending" ? "selected" : ""}>Pending</option>
-        </select>
-      </td>
 
       <!-- NOTE (BISA KETIK MANUAL) -->
       <td>

@@ -24,7 +24,7 @@ function refreshData(){
 }
 
 /* =========================
-   SAVE NOTE (DELAY)
+   SAVE NOTE
 ========================= */
 function saveNote(id,value){
 
@@ -113,54 +113,39 @@ function loadTable(filter=""){
       <td>${x.city || ""}</td>
 
       <td>
-        <select
-          onchange="updateStatus('${x.id}',this.value)"
-          style="
-            padding:8px 10px;
-            min-width:125px;
-            border-radius:10px;
-            border:1px solid #ddd;
-            cursor:pointer;
-            background:#fff;">
-
-          <option value="">Pilih...</option>
+        <select onchange="updateStatus('${x.id}',this.value)"
+        style="padding:8px;border-radius:10px;">
+          <option value="">Pilih</option>
           <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
           <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
           <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
           <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-
         </select>
       </td>
 
       <td>
-        <input
-          type="text"
-          value="${x.note || ""}"
-          placeholder="Isi note..."
-          onkeyup="updateNote('${x.id}',this.value)"
-          style="
-            width:170px;
-            padding:8px 10px;
-            border:1px solid #ddd;
-            border-radius:10px;">
+        <input type="text"
+        value="${x.note || ""}"
+        onkeyup="updateNote('${x.id}',this.value)"
+        style="width:170px;padding:8px;border-radius:10px;border:1px solid #ddd;">
       </td>
 
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 
           <button onclick="openMaterialById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
-            📦
+          style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
+          📦
           </button>
 
           <button onclick="editTicketById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
-            ✏️
+          style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
+          ✏️
           </button>
 
           <button onclick="hapusTicketById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
-            🗑️
+          style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
+          🗑️
           </button>
 
         </div>
@@ -192,7 +177,7 @@ if(search){
 }
 
 /* =========================
-   OPEN MATERIAL
+   MATERIAL
 ========================= */
 window.openMaterialById = function(id){
   localStorage.setItem("activeTicketId",id);
@@ -200,7 +185,7 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT
+   EDIT POPUP MODAL
 ========================= */
 window.editTicketById = function(id){
 
@@ -210,12 +195,83 @@ window.editTicketById = function(id){
 
   let x = tickets[idx];
 
-  x.customer = prompt("Customer",x.customer) || x.customer;
-  x.project  = prompt("Project",x.project) || x.project;
-  x.spk      = prompt("SPK",x.spk) || x.spk;
-  x.city     = prompt("City",x.city) || x.city;
+  let old = document.getElementById("editPopup");
+  if(old) old.remove();
+
+  let html = `
+  <div id="editPopup"
+  style="
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.45);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;">
+
+    <div style="
+      width:420px;
+      max-width:95%;
+      background:#fff;
+      border-radius:18px;
+      padding:25px;">
+
+      <h2 style="margin-top:0;">Edit Ticket</h2>
+
+      <input id="e_customer" placeholder="Customer"
+      value="${x.customer || ""}"
+      style="width:100%;padding:10px;margin-bottom:10px;">
+
+      <input id="e_project" placeholder="Project"
+      value="${x.project || ""}"
+      style="width:100%;padding:10px;margin-bottom:10px;">
+
+      <input id="e_spk" placeholder="SPK"
+      value="${x.spk || ""}"
+      style="width:100%;padding:10px;margin-bottom:10px;">
+
+      <input id="e_city" placeholder="City"
+      value="${x.city || ""}"
+      style="width:100%;padding:10px;margin-bottom:15px;">
+
+      <div style="display:flex;gap:10px;justify-content:end;">
+
+        <button onclick="document.getElementById('editPopup').remove()"
+        style="padding:10px 16px;border:none;border-radius:10px;background:#ccc;">
+        Cancel
+        </button>
+
+        <button onclick="saveEditTicket('${id}')"
+        style="padding:10px 16px;border:none;border-radius:10px;background:#27ae60;color:#fff;">
+        Save
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend",html);
+};
+
+/* =========================
+   SAVE EDIT
+========================= */
+window.saveEditTicket = function(id){
+
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
+
+  tickets[idx].customer = document.getElementById("e_customer").value;
+  tickets[idx].project  = document.getElementById("e_project").value;
+  tickets[idx].spk      = document.getElementById("e_spk").value;
+  tickets[idx].city     = document.getElementById("e_city").value;
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  document.getElementById("editPopup").remove();
 
   loadSummary();
   loadTable(search ? search.value : "");

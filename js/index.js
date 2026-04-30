@@ -30,7 +30,7 @@ window.updateNote = function(id,value){
 };
 
 /* =========================
-   STATUS (SYNC ENGINE ONLY)
+   STATUS
 ========================= */
 window.updateStatus = function(id,value){
 
@@ -88,8 +88,11 @@ function loadTable(filter=""){
   const body = document.getElementById("ticketBody");
   if(!body) return;
 
-  body.innerHTML = rows.map(x => `
+  body.innerHTML = rows.map((x, index) => `
     <tr>
+
+      <!-- ================= NO URUT OTOMATIS ================= -->
+      <td>${index + 1}</td>
 
       <td>${x.customer || ""}</td>
       <td>${x.project || ""}</td>
@@ -118,6 +121,7 @@ function loadTable(filter=""){
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 
+          <!-- 📦 TETAP AMAN (JANGAN DIHAPUS) -->
           <button onclick="openMaterialById('${x.id}')"
             style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
             📦
@@ -205,7 +209,7 @@ window.saveEdit = function(){
 };
 
 /* =========================
-   DELETE (FULL SYNC SAFE)
+   DELETE
 ========================= */
 window.hapusTicketById = function(id){
 

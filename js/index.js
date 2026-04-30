@@ -225,20 +225,6 @@ window.exportExcel = function () {
     return;
   }
 
-  /* =========================
-     CARI MAX MATERIAL
-  ========================= */
-  let maxMat = 0;
-
-  data.forEach(t => {
-    if (Array.isArray(t.material)) {
-      maxMat = Math.max(maxMat, t.material.length);
-    }
-  });
-
-  /* =========================
-     BUILD DATA EXPORT
-  ========================= */
   let exportData = data.map((x, i) => {
 
     let row = {
@@ -254,35 +240,41 @@ window.exportExcel = function () {
     };
 
     /* =========================
-       MATERIAL COLUMN (FLAT)
+       MATERIAL (HANYA QTY > 0)
     ========================= */
-   for (let j = 0; j < maxMat; j++) {
+    let matList = (x.material || [])
+      .map(m => {
 
-  let mat = x.material?.[j];
+        if (!m) return null;
 
-  let name = "";
-  let qty = "";
+        let name = "";
+        let qty = 0;
 
-  if (Array.isArray(mat)) {
-    name = mat[0] || "";
-    qty  = mat[1] || "";
-  } else if (typeof mat === "object" && mat) {
-    name = mat.name || mat.nama || "";
-    qty  = mat.qty || "";
-  }
+        if (Array.isArray(m)) {
+          name = m[0] || "";
+          qty  = Number(m[1]) || 0;
+        } else {
+          name = m.name || m.nama || "";
+          qty  = Number(m.qty) || 0;
+        }
 
-  row[`Material_${j + 1}`] = name;
-  row[`Qty_${j + 1}`] = qty;
-}
+        return qty > 0 ? { name, qty } : null;
 
-  /* =========================
-     EXPORT XLSX
-  ========================= */
+      })
+      .filter(Boolean);
+
+    matList.forEach((mat, j) => {
+      row[`Material_${j + 1}`] = mat.name;
+      row[`Qty_${j + 1}`] = mat.qty;
+    });
+
+    return row;
+  });
+
   let ws = XLSX.utils.json_to_sheet(exportData);
   let wb = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(wb, ws, "Tickets");
-
   XLSX.writeFile(wb, "FS_Ticket_Material.xlsx");
 
   alert("✔ Export berhasil");

@@ -1,7 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
 
 let data = [];
-let noteTimer = {};
 
 /* =========================
    SERVER
@@ -15,7 +14,7 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   FETCH DATA SERVER
+   LOAD DATA FROM SERVER
 ========================= */
 async function loadData(){
   try {
@@ -26,37 +25,29 @@ async function loadData(){
     loadTable(search ? search.value : "");
 
   } catch (err) {
-    console.error("Gagal ambil data server:", err);
+    console.error("Gagal load server:", err);
   }
 }
 
 /* =========================
-   SAVE NOTE (SERVER)
+   UPDATE NOTE (SERVER)
 ========================= */
-function saveNote(id,value){
+async function saveNote(id,value){
 
-  clearTimeout(noteTimer[id]);
+  try {
+    await fetch(`${SERVER_URL}/tickets/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ note: value })
+    });
 
-  noteTimer[id] = setTimeout(async ()=>{
-
-    try {
-      await fetch(`${SERVER_URL}/tickets/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ note: value })
-      });
-
-      loadData();
-
-    } catch (err) {
-      console.error("Gagal update note:", err);
-    }
-
-  },500);
+  } catch (err) {
+    console.error("Gagal update note:", err);
+  }
 }
 
 /* =========================
-   SAVE STATUS (SERVER)
+   UPDATE STATUS (SERVER)
 ========================= */
 async function saveStatus(id,value){
 
@@ -95,12 +86,11 @@ function loadSummary(){
 }
 
 /* =========================
-   TABLE
+   TABLE RENDER
 ========================= */
 function loadTable(filter=""){
 
   let rows = data.filter(x=>{
-
     let k = filter.toLowerCase();
 
     return (
@@ -110,7 +100,6 @@ function loadTable(filter=""){
       (x.city || "").toLowerCase().includes(k) ||
       (x.type || "").toLowerCase().includes(k)
     );
-
   });
 
   if(!body) return;
@@ -141,7 +130,7 @@ function loadTable(filter=""){
       <td>
         <input type="text"
         value="${x.note || ""}"
-        onkeyup="updateNote('${x.id}',this.value)">
+        oninput="updateNote('${x.id}',this.value)">
       </td>
 
       <td>
@@ -180,32 +169,38 @@ if(search){
 }
 
 /* =========================
-   MATERIAL
+   MATERIAL PAGE
 ========================= */
 window.openMaterialById = function(id){
-  localStorage.setItem("activeTicketId",id);
+  sessionStorage.setItem("activeTicketId",id);
   window.location.href = "material/material.html";
 };
 
 /* =========================
    EDIT (SERVER PATCH)
 ========================= */
-window.saveEditTicket = async function(id){
+window.editTicketById = async function(id){
+
+  let x = data.find(t => t.id == id);
+  if(!x) return;
+
+  let customer = prompt("Customer", x.customer);
+  let project  = prompt("Project", x.project);
+  let spk      = prompt("SPK", x.spk);
+  let city     = prompt("City", x.city);
 
   try {
     await fetch(`${SERVER_URL}/tickets/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        customer: e_customer.value,
-        project: e_project.value,
-        spk: e_spk.value,
-        city: e_city.value,
-        type: e_type.value
+        customer: customer || x.customer,
+        project: project || x.project,
+        spk: spk || x.spk,
+        city: city || x.city
       })
     });
 
-    document.getElementById("editPopup").remove();
     loadData();
 
   } catch (err) {

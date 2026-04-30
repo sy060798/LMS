@@ -95,11 +95,13 @@ async function saveAll(data) {
 }
 
 /* =========================
-   UPDATE TICKET
+   UPDATE TICKET (SERVER SAFE)
 ========================= */
 async function updateTicket(id, callback) {
 
   const data = await loadAll();
+
+  if (!Array.isArray(data)) return;
 
   const index = data.findIndex(t => t.id === id);
   if (index === -1) return;
@@ -115,33 +117,48 @@ async function updateTicket(id, callback) {
 async function deleteTicket(id) {
 
   const data = await loadAll();
-  const filtered = data.filter(t => t.id !== id);
+
+  const filtered = (Array.isArray(data) ? data : [])
+    .filter(t => t.id !== id);
 
   await saveAll(filtered);
 }
 
 /* =========================
-   HELPERS
+   NOTE (SAFE SERVER UPDATE)
 ========================= */
 async function updateNote(id, note) {
-  isEditing.note[id] = false;
 
-  return updateTicket(id, t => ({
+  isEditing.note[id] = true;
+
+  await updateTicket(id, t => ({
     ...t,
     note
   }));
+
+  isEditing.note[id] = false;
 }
 
+/* =========================
+   STATUS (SAFE SERVER UPDATE)
+========================= */
 async function updateStatus(id, status) {
-  isEditing.status[id] = false;
 
-  return updateTicket(id, t => ({
+  isEditing.status[id] = true;
+
+  await updateTicket(id, t => ({
     ...t,
     status
   }));
+
+  isEditing.status[id] = false;
 }
 
+/* =========================
+   MATERIAL
+========================= */
 async function updateMaterial(id, material) {
+
   return updateTicket(id, t => ({
     ...t,
     material
@@ -149,7 +166,7 @@ async function updateMaterial(id, material) {
 }
 
 /* =========================
-   BIND INPUT (ANTI REFRESH BUG)
+   BIND INPUT (OPTIONAL SAFE MODE)
 ========================= */
 function bindNoteInput(id, input) {
 
@@ -199,7 +216,7 @@ function startAutoRefresh() {
       detail: data
     }));
 
-  }, 3000); // 3 detik
+  }, 5000); // stabil 5 detik (lebih aman dari 3 detik)
 }
 
 /* =========================
@@ -210,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* =========================
-   PUBLIC API
+   PUBLIC API (SERVER ONLY)
 ========================= */
 window.syncEngine = {
 

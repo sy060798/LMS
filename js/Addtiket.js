@@ -4,14 +4,18 @@ const form = document.getElementById("ticketForm");
 const msg  = document.getElementById("msg");
 
 const statusEl = document.getElementById("status");
-const typeEl = document.getElementById("type");
+const typeEl   = document.getElementById("type");
 
 if(!form) return;
 
-/* DEFAULT */
+/* =========================
+   DEFAULT TYPE
+========================= */
 if(typeEl) typeEl.value = "Activation";
 
-/* SUBMIT */
+/* =========================
+   SUBMIT
+========================= */
 form.addEventListener("submit", function(e){
     e.preventDefault();
 
@@ -26,26 +30,35 @@ form.addEventListener("submit", function(e){
 
     const spkClean = spk.toLowerCase();
 
+    /* =========================
+       CEK DUPLIKAT SPK
+    ========================= */
     if(data.some(t => (t.spk || "").toLowerCase() === spkClean)){
         alert("❌ SPK sudah digunakan!");
         return;
     }
 
+    /* =========================
+       DATA TICKET FINAL
+    ========================= */
     const ticket = {
-        id: spk,
+        id: spk, // SPK = ID utama
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
         spk: spk,
+
+        type: typeEl?.value || "Activation",
+
         tanggal: document.getElementById("tanggal")?.value || "",
         city: document.getElementById("city")?.value.trim() || "",
 
-        /* 🔥 TYPE BARU */
-        type: typeEl?.value || "Activation",
-
         status: statusEl?.value || "Open",
+
         ket: document.getElementById("ket")?.value.trim() || "",
+
         note: "",
         material: [],
+
         created: new Date().toISOString()
     };
 

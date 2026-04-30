@@ -63,6 +63,8 @@ padding:16px;
 box-shadow:0 4px 10px rgba(0,0,0,.08)
 }
 
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;border-bottom:1px solid #ddd;text-align:left}
 table{
 width:100%;
 border-collapse:collapse;
@@ -79,15 +81,7 @@ vertical-align:middle;
 th{background:#e3f2fd}
 
 .search-box{
-margin:15px 0;
-display:flex;
-gap:10px;
-}
-
-.search-box input{
-padding:10px 14px;
-border:1px solid #ccc;
-border-radius:8px;
+@@ -80,6 +91,11 @@
 min-width:280px;
 }
 
@@ -99,101 +93,34 @@ z-index:5;
 .icon-btn{
 border:none;
 padding:6px 10px;
-border-radius:6px;
-cursor:pointer;
-font-size:14px;
-color:#fff;
+@@ -90,9 +106,7 @@
 background:#1565c0;
 }
 
+/* =========================
+   POPUP MATERIAL (FIXED)
+========================= */
 /* POPUP */
 #materialPopup{
 display:none;
 position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-background:rgba(0,0,0,.6);
-z-index:9999;
-justify-content:center;
-align-items:center;
-}
-
-.modal-box{
-background:#fff;
-width:90%;
-max-width:1000px;
-padding:20px;
-border-radius:12px;
-max-height:85vh;
-overflow:auto;
-}
-
-.modal-header{
-display:flex;
-justify-content:space-between;
-margin-bottom:10px;
-}
-
-.close-btn{
-background:red;
-color:#fff;
-border:none;
-padding:6px 10px;
-border-radius:6px;
-cursor:pointer;
-}
-</style>
-</head>
-
-<body>
-
-<header>FS Ticket LMS</header>
-
+@@ -138,9 +152,6 @@
 <nav>
 <a href="index.html">Dashboard</a>
 <a href="page/addtiket.html">Add Ticket</a>
+
+<!-- ❌ MATERIAL HAPUS DARI MENU (sesuai request kamu) -->
+
 <a href="#" onclick="exportExcel()">Export Excel</a>
 <a href="#" onclick="saveNow()">Save</a>
 </nav>
-
-<div class="container">
-
-<div class="grid">
-<div class="card"><h3>Total Ticket</h3><div class="num" id="totTicket">0</div></div>
-<div class="card"><h3>Open Ticket</h3><div class="num" id="openTicket">0</div></div>
-<div class="card"><h3>Closed Ticket</h3><div class="num" id="closeTicket">0</div></div>
-<div class="card"><h3>Total Material</h3><div class="num" id="matCount">0</div></div>
-</div>
-
-<div class="table-wrap">
-<h2>Recent Tickets</h2>
-
-<div class="search-box">
-<input type="text" id="searchCustomer" placeholder="Cari Project...">
-</div>
-
-<table>
-<thead>
-<tr>
-<th>No</th>
-<th>Customer</th>
-<th>Project</th>
-<th>SPK</th>
-<th>Tanggal</th>
-<th>City</th>
-<th>Type</th>
-<th>Status</th>
-<th>Note</th>
-<th>Aksi</th>
-</tr>
-</thead>
-
-<tbody id="ticketBody"></tbody>
-</table>
-
+@@ -182,45 +193,43 @@
 </div>
 </div>
 
+<!-- =========================
+     MATERIAL POPUP
+========================= -->
 <div id="materialPopup">
 <div class="modal-box">
 
@@ -221,6 +148,32 @@ style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-r
 <tbody id="matBody"></tbody>
 </table>
 
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <h2>📦 Material Ticket</h2>
+      <button class="close-btn" onclick="closeMaterialPopup()">X</button>
+    </div>
+
+    <input id="matSearch"
+      placeholder="Cari material..."
+      style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-radius:6px">
+
+    <table>
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama</th>
+          <th>Satuan</th>
+          <th>Harga</th>
+          <th>Qty</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody id="matBody"></tbody>
+    </table>
+
+  </div>
 </div>
 </div>
 
@@ -228,98 +181,10 @@ style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-r
 
 <script src="./js/syncEngine.js"></script>
 <script src="./js/index.js"></script>
+<script src="./js/Addtiket.js"></script>
 <script src="./material/material.js"></script>
 
 <!-- HAPUS addtiket.js dari dashboard -->
-<!-- ================= POPUP EDIT SIMPLE ================= -->
-<div id="editPopup" style="
-display:none;
-position:fixed;
-top:0;left:0;
-width:100%;height:100%;
-background:rgba(0,0,0,.5);
-z-index:99999;
-justify-content:center;
-align-items:center;
-">
 
-  <div style="
-  background:#fff;
-  padding:20px;
-  border-radius:12px;
-  width:400px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-  ">
-
-    <h3>Edit Ticket</h3>
-
-    <input id="eCustomer" placeholder="Customer" style="padding:10px">
-    <input id="eProject" placeholder="Project" style="padding:10px">
-    <input id="eSPK" placeholder="SPK" style="padding:10px">
-    <input id="eCity" placeholder="City" style="padding:10px">
-
-    <div style="display:flex;gap:10px">
-      <button onclick="closeEdit()" style="flex:1;padding:10px;background:#dc3545;color:#fff;border:none;border-radius:6px">Cancel</button>
-      <button onclick="saveEdit()" style="flex:1;padding:10px;background:#28a745;color:#fff;border:none;border-radius:6px">Save</button>
-    </div>
-
-  </div>
-</div>
-
-<script>
-let editId = null;
-
-/* OPEN POPUP */
-window.openEdit = function(id){
-
-  let data = window.syncEngine?.DB?.getTickets?.() || [];
-  let t = data.find(x => x.id === id);
-  if(!t) return;
-
-  editId = id;
-
-  document.getElementById("eCustomer").value = t.customer || "";
-  document.getElementById("eProject").value  = t.project || "";
-  document.getElementById("eSPK").value      = t.spk || "";
-  document.getElementById("eCity").value     = t.city || "";
-
-  document.getElementById("editPopup").style.display = "flex";
-};
-
-/* CLOSE */
-window.closeEdit = function(){
-  document.getElementById("editPopup").style.display = "none";
-};
-
-/* SAVE */
-window.saveEdit = function(){
-
-  let customer = eCustomer.value;
-  let project  = eProject.value;
-  let spk      = eSPK.value;
-  let city     = eCity.value;
-
-  let data = window.syncEngine.DB.getTickets();
-
-  let duplicate = data.some(t => t.id !== editId && t.spk === spk);
-  if(duplicate){
-    alert("SPK sudah dipakai!");
-    return;
-  }
-
-  window.syncEngine.updateTicket(editId, t => {
-    t.customer = customer;
-    t.project = project;
-    t.spk = spk;
-    t.city = city;
-    return t;
-  });
-
-  window.syncEngine.saveAll();
-  closeEdit();
-};
-</script>
 </body>
 </html>

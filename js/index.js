@@ -218,28 +218,21 @@ window.exportExcel = function () {
     return;
   }
 
-  let exportData = data.map((x, i) => {
+  // FILTER status progress
+  let filtered = data.filter(x =>
+    (x.status || "").toLowerCase().includes("progress")
+  );
 
-    let row = {
-      No: i + 1,
-      Customer: x.customer || "",
-      Project: x.project || "",
-      SPK: x.spk || "",
-      Type: x.type || "",
-      Tanggal: x.tanggal || "",
-      City: x.city || "",
-      Status: x.status || "",
-      Note: x.note || ""
-    };
+  let ws = {};
+  let maxMaterial = 6; // jumlah baris material per tiket
+  let colWidth = 4;    // lebar blok per tiket
 
-    /* =========================
-       MATERIAL (HANYA QTY > 0)
-    ========================= */
-    let matList = (x.material || [])
+  filtered.forEach((x, index) => {
+
+    let col = index * colWidth;
+
+    let materials = (x.material || [])
       .map(m => {
-
-        if (!m) return null;
-
         let name = "";
         let qty = 0;
 
@@ -252,25 +245,45 @@ window.exportExcel = function () {
         }
 
         return qty > 0 ? { name, qty } : null;
-
       })
       .filter(Boolean);
 
-    matList.forEach((mat, j) => {
-      row[`Material_${j + 1}`] = mat.name;
-      row[`Qty_${j + 1}`] = mat.qty;
+    /* =========================
+       HEADER
+    ========================= */
+    XLSX.utils.sheet_add_aoa(ws, [[x.spk || ""]], { origin: { r: 0, c: col } });
+    XLSX.utils.sheet_add_aoa(ws, [[x.project || ""]], { origin: { r: 1, c: col } });
+    XLSX.utils.sheet_add_aoa(ws, [[x.tanggal || ""]], { origin: { r: 2, c: col } });
+
+    /* =========================
+       TABLE HEADER
+    ========================= */
+    XLSX.utils.sheet_add_aoa(ws, [["Material", "Qty"]], {
+      origin: { r: 4, c: col }
     });
 
-    return row;
+    /* =========================
+       MATERIAL LIST (KE BAWAH)
+    ========================= */
+    for (let i = 0; i < maxMaterial; i++) {
+      let mat = materials[i];
+
+      XLSX.utils.sheet_add_aoa(ws, [[
+        mat ? mat.name : "",
+        mat ? mat.qty : "-"
+      ]], {
+        origin: { r: 5 + i, c: col }
+      });
+    }
+
   });
 
-  let ws = XLSX.utils.json_to_sheet(exportData);
   let wb = XLSX.utils.book_new();
-
   XLSX.utils.book_append_sheet(wb, ws, "Tickets");
-  XLSX.writeFile(wb, "FS_Ticket_Material.xlsx");
 
-  alert("✔ Export berhasil");
+  XLSX.writeFile(wb, "Ticket_Form.xlsx");
+
+  alert("✔ Export sesuai layout form berhasil");
 };
 /* =========================
    INIT

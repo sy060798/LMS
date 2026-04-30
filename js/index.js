@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
 let noteTimer = {};
+let editId = null;
 
 /* =========================
    ELEMENT
@@ -9,14 +10,14 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   GET DATA (SYNC ENGINE ONLY)
+   GET DATA
 ========================= */
 function getData(){
   return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   NOTE SAVE (DEBOUNCE)
+   NOTE SAVE
 ========================= */
 function saveNote(id,value){
 
@@ -35,7 +36,7 @@ function saveNote(id,value){
 }
 
 /* =========================
-   STATUS UPDATE
+   STATUS
 ========================= */
 window.updateStatus = function(id,value){
 
@@ -71,7 +72,7 @@ function loadSummary(){
 }
 
 /* =========================
-   TABLE RENDER
+   TABLE
 ========================= */
 function loadTable(filter=""){
 
@@ -118,7 +119,7 @@ function loadTable(filter=""){
           oninput="updateNote('${x.id}',this.value)">
       </td>
 
-      <!-- AKSI (FIXED - 📦 TIDAK HILANG) -->
+      <!-- AKSI -->
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 
@@ -127,7 +128,8 @@ function loadTable(filter=""){
             📦
           </button>
 
-          <button onclick="editTicketById('${x.id}')"
+          <!-- ✏️ EDIT (POPUP) -->
+          <button onclick="openEdit('${x.id}')"
             style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
             ✏️
           </button>
@@ -161,7 +163,7 @@ if(search){
 }
 
 /* =========================
-   OPEN MATERIAL
+   MATERIAL
 ========================= */
 window.openMaterialById = function(id){
   localStorage.setItem("activeTicketId",id);
@@ -169,20 +171,37 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT
+   EDIT POPUP
 ========================= */
-window.editTicketById = function(id){
+window.openEdit = function(id){
 
-  let data = getData();
-  let t = data.find(x => x.id == id);
+  let t = getData().find(x => x.id === id);
   if(!t) return;
 
-  let customer = prompt("Customer",t.customer);
-  let project  = prompt("Project",t.project);
-  let spk      = prompt("SPK",t.spk);
-  let city     = prompt("City",t.city);
+  editId = id;
 
-  window.syncEngine.updateTicket(id, x => {
+  let popup = document.getElementById("editPopup");
+
+  document.getElementById("eCustomer").value = t.customer || "";
+  document.getElementById("eProject").value  = t.project || "";
+  document.getElementById("eSPK").value      = t.spk || "";
+  document.getElementById("eCity").value     = t.city || "";
+
+  popup.style.display = "flex";
+};
+
+window.closeEdit = function(){
+  document.getElementById("editPopup").style.display = "none";
+};
+
+window.saveEdit = function(){
+
+  let customer = document.getElementById("eCustomer").value;
+  let project  = document.getElementById("eProject").value;
+  let spk      = document.getElementById("eSPK").value;
+  let city     = document.getElementById("eCity").value;
+
+  window.syncEngine.updateTicket(editId, x => {
     x.customer = customer || x.customer;
     x.project  = project || x.project;
     x.spk      = spk || x.spk;
@@ -192,6 +211,7 @@ window.editTicketById = function(id){
 
   window.syncEngine.saveAll();
 
+  closeEdit();
   loadSummary();
   loadTable(search ? search.value : "");
 };

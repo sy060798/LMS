@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
 let noteTimer = {};
+let isEditing = {};
 let editId = null;
 
 /* =========================
@@ -11,9 +12,11 @@ async function getData(){
 }
 
 /* =========================
-   NOTE (SERVER SYNC)
+   NOTE (DEBOUNCE SAFE)
 ========================= */
 window.updateNote = function(id,value){
+
+  isEditing[id] = true;
 
   clearTimeout(noteTimer[id]);
 
@@ -28,16 +31,22 @@ window.updateNote = function(id,value){
 
     await window.syncEngine.saveAll(data);
 
+    isEditing[id] = false;
+
     loadSummary();
     loadTable();
 
-  }, 300);
+  }, 500);
 };
 
 /* =========================
    STATUS
 ========================= */
 window.updateStatus = async function(id,value){
+
+  if(isEditing[id]) return;
+
+  isEditing[id] = true;
 
   let data = await getData();
 
@@ -47,6 +56,8 @@ window.updateStatus = async function(id,value){
   data[index].status = value;
 
   await window.syncEngine.saveAll(data);
+
+  isEditing[id] = false;
 
   loadSummary();
   loadTable();
@@ -58,6 +69,7 @@ window.updateStatus = async function(id,value){
 async function loadSummary(){
 
   let data = await getData();
+  if(!Array.isArray(data)) return;
 
   const tot      = document.getElementById("totTicket");
   const open     = document.getElementById("openTicket");
@@ -65,8 +77,6 @@ async function loadSummary(){
   const close    = document.getElementById("closeTicket");
   const pending  = document.getElementById("pendingTicket");
   const mat      = document.getElementById("matCount");
-
-  if(!Array.isArray(data)) return;
 
   if(tot) tot.textContent = data.length;
   if(open) open.textContent = data.filter(x => x.status=="Open").length;
@@ -208,7 +218,7 @@ window.hapusTicketById = async function(id){
 };
 
 /* =========================
-   EXPORT EXCEL (FIXED FULL)
+   📊 EXPORT EXCEL (FULL FIXED)
 ========================= */
 window.exportExcel = async function () {
 
@@ -234,6 +244,7 @@ window.exportExcel = async function () {
 
     let materials = (x.material || [])
       .map(m => {
+
         let name = "";
         let qty = 0;
 
@@ -246,6 +257,7 @@ window.exportExcel = async function () {
         }
 
         return qty > 0 ? { name, qty } : null;
+
       })
       .filter(Boolean);
 

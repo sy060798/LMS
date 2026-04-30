@@ -146,8 +146,6 @@ button{
 <nav>
 <a href="../index.html">Dashboard</a>
 <a href="addtiket.html">Add Ticket</a>
-<a href="#">Material</a>
-<a href="#">Export Excel</a>
 </nav>
 
 <div class="container">
@@ -159,10 +157,7 @@ button{
 
 <div class="grid">
 
-<div class="form-group">
-<label>No</label>
-<input type="number" id="no" required>
-</div>
+<!-- ❌ NO SUDAH DIHAPUS -->
 
 <div class="form-group">
 <label>Customer</label>
@@ -225,26 +220,42 @@ form.addEventListener("submit", function(e){
 
     let data = JSON.parse(localStorage.getItem("tickets")) || [];
 
+    const spk = document.getElementById("spk").value.trim();
+
+    if(!spk){
+        alert("SPK wajib diisi!");
+        return;
+    }
+
+    // CEK DUPLIKAT SPK
+    if(data.some(t => t.spk === spk)){
+        alert("SPK sudah digunakan!");
+        return;
+    }
+
     const ticket = {
-        no: document.getElementById("no").value,
+        id: spk,
         customer: document.getElementById("customer").value,
         project: document.getElementById("project").value,
-        spk: document.getElementById("spk").value,
+        spk: spk,
         tanggal: document.getElementById("tanggal").value,
         city: document.getElementById("city").value,
         status: document.getElementById("status").value,
-        ket: document.getElementById("ket").value
+        ket: document.getElementById("ket").value,
+        type: "Activation",
+        note: "",
+        material: [],
+        created: new Date().toISOString()
     };
 
     data.push(ticket);
 
     localStorage.setItem("tickets", JSON.stringify(data));
 
-    document.getElementById("msg").innerText = "Ticket berhasil disimpan.";
+    document.getElementById("msg").innerText = "✔ Ticket berhasil disimpan";
 
     form.reset();
 });
-
 </script>
 
 </body>

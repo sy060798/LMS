@@ -1,163 +1,291 @@
 (function () {
 
-const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
+const SERVER_URL =
+window.SERVER_URL ||
+"https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
    LOCAL DB
 ========================= */
 const DB = {
-  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
 
-  saveTickets: (data) => {
-    localStorage.setItem("tickets", JSON.stringify(data));
+  getTickets() {
+    try {
+      return JSON.parse(
+        localStorage.getItem("tickets") || "[]"
+      );
+    } catch {
+      return [];
+    }
   },
 
-  getActiveSpk: () => localStorage.getItem("activeTicketId")
+  saveTickets(data) {
+    localStorage.setItem(
+      "tickets",
+      JSON.stringify(data || [])
+    );
+  },
+
+  getActiveSpk() {
+    return localStorage.getItem("activeTicketId");
+  }
+
 };
 
 /* =========================
-   GET ACTIVE
+   ACTIVE TICKET
 ========================= */
-function getActiveTicket(){
-  return DB.getTickets().find(t => t.id == DB.getActiveSpk());
+function getActiveTicket() {
+  return DB.getTickets().find(
+    t => String(t.id) === String(DB.getActiveSpk())
+  );
 }
 
 /* =========================
-   CLEAN BEFORE SAVE
+   CLEAN MATERIAL
 ========================= */
-function cleanBeforeSave(tickets){
+function cleanBeforeSave(tickets = []) {
 
   return tickets.map(t => {
 
-    if(Array.isArray(t.material)){
-      t.material = t.material
-        .filter(m => Number(m.qty) > 0)
+    let item = { ...t };
+
+    if (Array.isArray(item.material)) {
+
+      item.material = item.material
+        .filter(m => Number(m.qty || 0) > 0)
         .map(m => ({
-          nama: m.nama,
-          satuan: m.satuan,
+          nama: m.nama || "",
+          satuan: m.satuan || "",
           harga: Number(m.harga || 0),
           qty: Number(m.qty || 0)
         }));
     }
 
-    return t;
+    return item;
   });
-
 }
 
 /* =========================
-   SAVE SAFE
-   SAVE (MANUAL ONLY)
+   SAVE SERVER
 ========================= */
-async function saveAll(){
+async function saveAll() {
 
   try {
 
     let tickets = DB.getTickets();
-
     let cleaned = cleanBeforeSave(tickets);
 
     DB.saveTickets(cleaned);
 
-    await fetch(SERVER_URL + "/api/save", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "LMS",
-        data: cleaned
-      })
-    });
+    const res = await fetch(
+      SERVER_URL + "/api/save",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({
+          type: "LMS",
+          data: cleaned
+        })
+      }
+    );
 
-    window.dispatchEvent(new Event("ticketsUpdated"));
+    if (!res.ok) throw new Error("Save gagal");
+
+    window.dispatchEvent(
+      new Event("ticketsUpdated")
+    );
 
     console.log("✔ SAVE OK");
 
-  } catch (e) {
-    console.log("SAVE ERROR", e);
+  } catch (err) {
+    console.log("SAVE ERROR:", err);
   }
 }
 
 /* =========================
-   LOAD SAFE (MERGE)
-   LOAD (MANUAL ONLY)
-   👉 tidak auto load biar tidak “tenggelam”
+   LOAD SERVER + MERGE
 ========================= */
-async function loadAll(){
+async function loadAll() {
 
   try {
 
-    let res = await fetch(SERVER_URL + "/api/get?type=LMS");
+    const res = await fetch(
+      SERVER_URL + "/api/get?type=LMS"
+    );
+
     let serverData = await res.json();
 
-    if(!Array.isArray(serverData)) return;
+    if (!Array.isArray(serverData)) {
+      serverData = [];
+    }
 
-    let localData = DB.getTickets();
+    const localData = DB.getTickets();
 
-    let map = new Map();
+    const map = new Map();
 
-    // LOCAL PRIORITY (jangan hilang)
-    // LOCAL PRIORITY
-    localData.forEach(t => map.set(t.id, t));
+    /* local priority */
+    localData.forEach(t => {
+      map.set(String(t.id), t);
+    });
 
-    // SERVER hanya fill missing
-    // SERVER fill missing only
+    /* fill missing from server */
     serverData.forEach(t => {
-      if(!map.has(t.id)){
-        map.set(t.id, t);
+      const id = String(t.id);
+
+      if (!map.has(id)) {
+        map.set(id, t);
       }
     });
 
-    let merged = Array.from(map.values());
+    const merged = Array.from(map.values());
 
     DB.saveTickets(merged);
 
-    window.dispatchEvent(new Event("ticketsUpdated"));
+    window.dispatchEvent(
+      new Event("ticketsUpdated")
+    );
 
-    console.log("✔ LOAD MERGED OK");
+    console.log("✔ LOAD OK");
 
-  } catch (e) {
-    console.log("LOAD ERROR", e);
+    return merged;
+
+  } catch (err) {
+
+    console.log("LOAD ERROR:", err);
+
+    return DB.getTickets();
   }
 }
 
 /* =========================
-   INIT
-   ❌ AUTO LOAD DIMATIKAN
-   ❌ AUTO SAVE LOOP DIMATIKAN
+   UPDATE ONE TICKET
 ========================= */
-(async function(){
-  await loadAll();
-})();
-// (SENGAJA DIHAPUS biar manual saja)
+async function updateTicket(id, callback) {
 
-/* =========================
-   AUTO SYNC (SAFE)
-   MANUAL TRIGGER ONLY
-========================= */
-let syncTimer;
+  let data = DB.getTickets();
 
-function autoSave(){
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(saveAll, 5000);
+  let index = data.findIndex(
+    x => String(x.id) === String(id)
+  );
+
+  if (index === -1) return;
+
+  if (typeof callback === "function") {
+    data[index] = callback({
+      ...data[index]
+    });
+  } else if (
+    callback &&
+    typeof callback === "object"
+  ) {
+    data[index] = {
+      ...data[index],
+      ...callback
+    };
+  }
+
+  DB.saveTickets(data);
+
+  await saveAll();
 }
 
-setInterval(saveAll, 30000);
-window.addEventListener("beforeunload", saveAll);
-window.saveNow = saveAll;
-window.loadNow = loadAll;
+/* =========================
+   DELETE
+========================= */
+async function deleteTicket(id) {
+
+  let data = DB.getTickets().filter(
+    x => String(x.id) !== String(id)
+  );
+
+  DB.saveTickets(data);
+
+  await saveAll();
+}
 
 /* =========================
-   API
+   NOTE
+========================= */
+async function updateNote(id, note) {
+  await updateTicket(id, { note });
+}
+
+/* =========================
+   STATUS
+========================= */
+async function updateStatus(id, status) {
+  await updateTicket(id, { status });
+}
+
+/* =========================
+   MATERIAL
+========================= */
+async function updateMaterial(id, material) {
+  await updateTicket(id, { material });
+}
+
+/* =========================
+   AUTO SAVE
+========================= */
+let syncTimer = null;
+
+function autoSave() {
+
+  clearTimeout(syncTimer);
+
+  syncTimer = setTimeout(() => {
+    saveAll();
+  }, 5000);
+}
+
+/* =========================
+   AUTO BACKGROUND SAVE
+========================= */
+setInterval(() => {
+  saveAll();
+}, 30000);
+
+window.addEventListener(
+  "beforeunload",
+  saveAll
+);
+
+/* =========================
+   INIT
+========================= */
+document.addEventListener(
+  "DOMContentLoaded",
+  async () => {
+    await loadAll();
+  }
+);
+
+/* =========================
    GLOBAL API
 ========================= */
-window.FS = {
+window.syncEngine = {
+
   DB,
+  getActiveTicket,
+
   saveAll,
   loadAll,
+
+  updateTicket,
+  deleteTicket,
+
+  updateNote,
+  updateStatus,
+  updateMaterial,
+
   autoSave
-  loadAll
+
 };
 
 window.saveNow = saveAll;
+window.loadNow = loadAll;
 
 })();

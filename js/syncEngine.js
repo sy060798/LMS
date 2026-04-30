@@ -209,7 +209,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 (function forceDeleteByCode(){
 
   // 🔥 GANTI INI KODE SPK YANG MAU DIHAPUS
-  const DELETE_SPK_ID = "T139412-050226-01"; // <-- ubah ini
+  const DELETE_SPK_ID = " "; // <-- ubah ini
 
   async function run(){
 

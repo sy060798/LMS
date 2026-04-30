@@ -8,11 +8,17 @@ let editId = null;
    GET DATA (SERVER ONLY)
 ========================= */
 async function getData(){
-  return await window.syncEngine.loadAll();
+  try {
+    const data = await window.syncEngine.loadAll();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.log("LOAD ERROR:", err);
+    return [];
+  }
 }
 
 /* =========================
-   NOTE
+   NOTE (DEBOUNCE SAFE)
 ========================= */
 window.updateNote = function(id,value){
 
@@ -20,21 +26,11 @@ window.updateNote = function(id,value){
 
   clearTimeout(noteTimer[id]);
 
-  noteTimer[id] = setTimeout(async () => {
+  noteTimer[id] = setTimeout(() => {
 
-    let data = await getData();
-
-    let index = data.findIndex(t => t.id === id);
-    if(index === -1) return;
-
-    data[index].note = value;
-
-    await window.syncEngine.saveAll(data);
+    window.syncEngine.updateNote(id, value);
 
     isEditing[id] = false;
-
-    loadSummary();
-    loadTable();
 
   }, 500);
 };
@@ -42,25 +38,15 @@ window.updateNote = function(id,value){
 /* =========================
    STATUS
 ========================= */
-window.updateStatus = async function(id,value){
+window.updateStatus = function(id,value){
 
   if(isEditing[id]) return;
 
   isEditing[id] = true;
 
-  let data = await getData();
-
-  let index = data.findIndex(t => t.id === id);
-  if(index === -1) return;
-
-  data[index].status = value;
-
-  await window.syncEngine.saveAll(data);
+  window.syncEngine.updateStatus(id, value);
 
   isEditing[id] = false;
-
-  loadSummary();
-  loadTable();
 };
 
 /* =========================
@@ -69,7 +55,6 @@ window.updateStatus = async function(id,value){
 async function loadSummary(){
 
   let data = await getData();
-  if(!Array.isArray(data)) return;
 
   const tot      = document.getElementById("totTicket");
   const open     = document.getElementById("openTicket");
@@ -78,16 +63,19 @@ async function loadSummary(){
   const pending  = document.getElementById("pendingTicket");
   const mat      = document.getElementById("matCount");
 
+  const safe = (v) => Array.isArray(v) ? v : [];
+
   if(tot) tot.textContent = data.length;
-  if(open) open.textContent = data.filter(x => x.status=="Open").length;
-  if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
-  if(close) close.textContent = data.filter(x => x.status=="Close").length;
-  if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
-  if(mat) mat.textContent = data.filter(x => x.material?.length > 0).length;
+
+  if(open) open.textContent = safe(data).filter(x => x.status=="Open").length;
+  if(progress) progress.textContent = safe(data).filter(x => x.status=="Progress").length;
+  if(close) close.textContent = safe(data).filter(x => x.status=="Close").length;
+  if(pending) pending.textContent = safe(data).filter(x => x.status=="Pending").length;
+  if(mat) mat.textContent = safe(data).filter(x => x.material?.length > 0).length;
 }
 
 /* =========================
-   TABLE DEFAULT
+   TABLE FILTER (SPK)
 ========================= */
 window.loadTable = async function(filter = "") {
 
@@ -110,18 +98,19 @@ window.loadTableBySPK = async function(filter = "") {
 
   let data = await getData();
 
-  let input = (filter || "").toLowerCase().trim();
-
-  let list = input.split(",").map(x => x.trim()).filter(Boolean);
+  let list = (filter || "")
+    .toLowerCase()
+    .split(",")
+    .map(x => x.trim())
+    .filter(Boolean);
 
   let rows = data.filter(x => {
 
-    if (list.length === 0) return true;
+    if (!list.length) return true;
 
     let spk = (x.spk || "").toLowerCase();
 
     return list.some(id => spk.includes(id));
-
   });
 
   renderTable(rows);
@@ -134,6 +123,8 @@ function renderTable(rows){
 
   const body = document.getElementById("ticketBody");
   if (!body) return;
+
+  if (!Array.isArray(rows)) rows = [];
 
   body.innerHTML = rows.map((x, i) => `
 <tr>
@@ -164,11 +155,9 @@ function renderTable(rows){
   </td>
 
   <td>
-    <div style="display:flex;gap:6px;justify-content:center;">
-      <button onclick="openMaterialById('${x.id}')">📦</button>
-      <button onclick="openEdit('${x.id}')">✏️</button>
-      <button onclick="hapusTicketById('${x.id}')">🗑️</button>
-    </div>
+    <button onclick="openMaterialById('${x.id}')">📦</button>
+    <button onclick="openEdit('${x.id}')">✏️</button>
+    <button onclick="hapusTicketById('${x.id}')">🗑️</button>
   </td>
 
 </tr>
@@ -176,14 +165,14 @@ function renderTable(rows){
 }
 
 /* =========================
-   SEARCH
+   SEARCH INPUT
 ========================= */
 window.searchSPK = function(val){
   loadTableBySPK(val);
 };
 
 /* =========================
-   📊 EXPORT EXCEL (PAKAI PUNYAMU)
+   EXPORT EXCEL
 ========================= */
 window.exportExcel = async function () {
 
@@ -222,7 +211,6 @@ window.exportExcel = async function () {
         }
 
         return qty > 0 ? { name, qty } : null;
-
       })
       .filter(Boolean);
 
@@ -230,7 +218,7 @@ window.exportExcel = async function () {
     XLSX.utils.sheet_add_aoa(ws, [[x.project || ""]], { origin: { r: 1, c: col } });
     XLSX.utils.sheet_add_aoa(ws, [[x.tanggal || ""]], { origin: { r: 2, c: col } });
 
-    XLSX.utils.sheet_add_aoa(ws, [["Material", "Qty"]], {
+    XLSX.utils.sheet_add_aoa(ws, [["Material","Qty"]], {
       origin: { r: 4, c: col }
     });
 
@@ -252,19 +240,18 @@ window.exportExcel = async function () {
 
   XLSX.writeFile(wb, "Ticket_Form.xlsx");
 
-  alert("✔ Export berhasil (server data)");
+  alert("✔ Export berhasil!");
 };
 
 /* =========================
-   UPLOAD EXCEL (SERVER IMPORT)
+   IMPORT EXCEL (SERVER SYNC)
 ========================= */
 window.uploadExcel = function () {
 
-  const input = document.getElementById("excelUpload");
-  const file = input.files[0];
+  const file = document.getElementById("excelUpload")?.files?.[0];
 
   if (!file) {
-    alert("Pilih file Excel dulu!");
+    alert("Pilih file Excel!");
     return;
   }
 
@@ -272,10 +259,8 @@ window.uploadExcel = function () {
 
   reader.onload = async function (e) {
 
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: "array" });
-
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
     const json = XLSX.utils.sheet_to_json(sheet);
 
     let oldData = await getData();
@@ -297,11 +282,9 @@ window.uploadExcel = function () {
 
     }));
 
-    let merged = [...oldData, ...newData];
+    await window.syncEngine.saveAll([...oldData, ...newData]);
 
-    await window.syncEngine.saveAll(merged);
-
-    alert("✔ Upload Excel berhasil masuk server!");
+    alert("✔ Import Excel sukses!");
 
     loadSummary();
     loadTable();
@@ -312,68 +295,53 @@ window.uploadExcel = function () {
 };
 
 /* =========================
-   EDIT
+   EDIT / DELETE
 ========================= */
 window.openEdit = async function(id){
 
-  let data = await getData();
-  let t = data.find(x => x.id === id);
+  let t = (await getData()).find(x => x.id === id);
   if(!t) return;
 
   editId = id;
 
-  document.getElementById("eCustomer").value = t.customer || "";
-  document.getElementById("eProject").value  = t.project || "";
-  document.getElementById("eSPK").value      = t.spk || "";
-  document.getElementById("eCity").value     = t.city || "";
+  eCustomer.value = t.customer;
+  eProject.value = t.project;
+  eSPK.value = t.spk;
+  eCity.value = t.city;
 
-  document.getElementById("editPopup").style.display = "flex";
+  editPopup.style.display = "flex";
 };
 
-window.closeEdit = function(){
-  document.getElementById("editPopup").style.display = "none";
+window.saveEdit = function(){
+
+  window.syncEngine.updateTicket(editId, {
+    customer: eCustomer.value,
+    project: eProject.value,
+    spk: eSPK.value,
+    city: eCity.value
+  });
+
+  editPopup.style.display = "none";
 };
 
-window.saveEdit = async function(){
-
-  let data = await getData();
-
-  let index = data.findIndex(x => x.id === editId);
-  if(index === -1) return;
-
-  data[index].customer = document.getElementById("eCustomer").value;
-  data[index].project  = document.getElementById("eProject").value;
-  data[index].spk      = document.getElementById("eSPK").value;
-  data[index].city     = document.getElementById("eCity").value;
-
-  await window.syncEngine.saveAll(data);
-
-  closeEdit();
-  loadSummary();
-  loadTable();
+window.hapusTicketById = function(id){
+  window.syncEngine.deleteTicket(id);
 };
 
 /* =========================
-   DELETE
+   INIT SAFE
 ========================= */
-window.hapusTicketById = async function(id){
-
-  if(!confirm("Hapus ticket ini?")) return;
-
-  let data = await getData();
-
-  data = data.filter(t => t.id !== id);
-
-  await window.syncEngine.saveAll(data);
-
-  loadSummary();
-  loadTable();
-};
+(async function init(){
+  await loadSummary();
+  await loadTable();
+})();
 
 /* =========================
-   INIT
+   AUTO REFRESH
 ========================= */
-loadSummary();
-loadTable();
+setInterval(() => {
+  loadSummary();
+  loadTable();
+}, 4000);
 
 });

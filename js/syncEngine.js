@@ -35,7 +35,7 @@ function showToast(msg, type = "success") {
 }
 
 /* =========================
-   LOCAL CACHE
+   LOCAL CACHE (HANYA CACHE)
 ========================= */
 const DB = {
 
@@ -54,14 +54,15 @@ const DB = {
 };
 
 /* =========================
-   ACTIVE
+   ACTIVE TICKET
 ========================= */
 function getActiveTicket(){
 
   let id = DB.getActiveSpk();
   if(!id) return null;
 
-  return DB.getTickets().find(x => x.id == id) || null;
+  let tickets = DB.getTickets();
+  return tickets.find(x => x.id == id) || null;
 }
 
 /* =========================
@@ -75,13 +76,13 @@ function cleanBeforeSave(tickets){
 
     if(Array.isArray(x.material)){
       x.material = x.material
-      .filter(m => Number(m.qty) > 0)
-      .map(m => ({
-        nama: m.nama || "",
-        satuan: m.satuan || "",
-        harga: Number(m.harga || 0),
-        qty: Number(m.qty || 0)
-      }));
+        .filter(m => Number(m.qty) > 0)
+        .map(m => ({
+          nama: m.nama || "",
+          satuan: m.satuan || "",
+          harga: Number(m.harga || 0),
+          qty: Number(m.qty || 0)
+        }));
     }
 
     return x;
@@ -89,7 +90,7 @@ function cleanBeforeSave(tickets){
 }
 
 /* =========================
-   LOAD SERVER (MASTER)
+   LOAD SERVER (SOURCE OF TRUTH)
 ========================= */
 async function loadAll(){
 
@@ -99,45 +100,43 @@ async function loadAll(){
 
     if(!res.ok){
       showToast("❌ Gagal ambil data server", "error");
-      return false;
+      return [];
     }
 
-    let serverData = await res.json();
+    let data = await res.json();
 
-    if(!Array.isArray(serverData)){
+    if(!Array.isArray(data)){
       showToast("❌ Data server rusak", "error");
-      return false;
+      return [];
     }
 
-    DB.saveTickets(serverData);
+    // cache lokal saja
+    DB.saveTickets(data);
 
-    window.dispatchEvent(new Event("ticketsUpdated"));
+    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
+      detail: data
+    }));
 
-    console.log("LOAD OK");
-    return true;
+    return data;
 
   }catch(err){
 
     console.log(err);
     showToast("❌ Load gagal", "error");
-    return false;
+    return [];
   }
 }
 
 /* =========================
-   SAVE SERVER (MASTER)
-   selalu ambil server dulu
+   SAVE SERVER (FIXED - NO LOAD BEFORE SAVE)
 ========================= */
 async function saveAll(){
 
   try{
 
-    /* ambil terbaru dulu */
-    let ok = await loadAll();
-    if(!ok) return;
-
-    /* ambil local setelah update */
+    // ambil dari cache lokal (biar cepat)
     let tickets = DB.getTickets();
+
     let cleaned = cleanBeforeSave(tickets);
 
     let res = await fetch(SERVER_URL + "/api/save", {
@@ -156,12 +155,10 @@ async function saveAll(){
       return;
     }
 
-    DB.saveTickets(cleaned);
-
-    window.dispatchEvent(new Event("ticketsUpdated"));
+    // refresh dari server setelah save
+    await loadAll();
 
     showToast("✔ Data berhasil disimpan", "success");
-    console.log("SAVE OK");
 
   }catch(err){
 
@@ -171,40 +168,35 @@ async function saveAll(){
 }
 
 /* =========================
-   REFRESH BUTTON
+   REFRESH
 ========================= */
 async function refreshNow(){
 
-  let ok = await loadAll();
-
-  if(ok){
-    showToast("✔ Data berhasil di refresh", "success");
-  }
+  await loadAll();
+  showToast("✔ Data berhasil di refresh", "success");
 }
 
 /* =========================
-   BUTTON MANUAL
+   BUTTON GLOBAL
 ========================= */
 window.saveNow = saveAll;
 window.loadNow = refreshNow;
 
 /* =========================
-   GLOBAL
+   GLOBAL API
 ========================= */
 window.FS = {
   DB,
   getActiveTicket,
   saveAll,
-  loadAll: refreshNow
+  loadAll
 };
 
 /* =========================
-   MANUAL MODE
-=========================
-Server = pusat data utama
-Klik Save    = ambil server lalu save server
-Klik Refresh = ambil server
-100 Chrome refresh = sama semua
+   AUTO LOAD SAAT BUKA
 ========================= */
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadAll();
+});
 
 })();

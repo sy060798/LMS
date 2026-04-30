@@ -106,10 +106,7 @@ color:#fff;
 background:#1565c0;
 }
 
-/* =========================
-   POPUP MATERIAL (FIXED)
-========================= */
-/* POPUP */
+/* POPUP MATERIAL */
 #materialPopup{
 display:none;
 position:fixed;
@@ -150,11 +147,9 @@ cursor:pointer;
 
 <body>
 
-<!-- EDIT POPUP -->
+<!-- ================= EDIT POPUP ================= -->
 <div id="editPopup" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:99999;justify-content:center;align-items:center;">
-
   <div style="background:#fff;padding:20px;border-radius:12px;width:350px;display:flex;flex-direction:column;gap:10px;">
-
     <h3>Edit Ticket</h3>
 
     <input id="eCustomer" placeholder="Customer">
@@ -166,24 +161,34 @@ cursor:pointer;
       <button onclick="closeEdit()" style="flex:1;padding:10px;background:#dc3545;color:#fff;border:none;border-radius:6px">Cancel</button>
       <button onclick="saveEdit()" style="flex:1;padding:10px;background:#28a745;color:#fff;border:none;border-radius:6px">Save</button>
     </div>
-
   </div>
 </div>
 
-
-   
+<!-- ================= HEADER ================= -->
 <header>FS Ticket LMS</header>
 
+<!-- ================= NAV ================= -->
 <nav>
 <a href="index.html">Dashboard</a>
 <a href="page/addtiket.html">Add Ticket</a>
 
-<!-- ❌ MATERIAL HAPUS DARI MENU (sesuai request kamu) -->
+<!-- 🔥 IMPORT EXCEL (BARU) -->
+<a href="#" onclick="document.getElementById('excelUpload').click()">Import Excel</a>
 
 <a href="#" onclick="exportExcel()">Export Excel</a>
 <a href="#" onclick="Monitoring()">Monitoring</a>
 </nav>
 
+<!-- 🔥 INPUT FILE IMPORT (HIDDEN) -->
+<input
+  type="file"
+  id="excelUpload"
+  accept=".xlsx,.xls"
+  style="display:none"
+  onchange="uploadExcel()"
+/>
+
+<!-- ================= CONTENT ================= -->
 <div class="container">
 
 <div class="grid">
@@ -222,9 +227,7 @@ cursor:pointer;
 </div>
 </div>
 
-<!-- =========================
-     MATERIAL POPUP FIX
-========================= -->
+<!-- ================= MATERIAL POPUP ================= -->
 <div id="materialPopup">
   <div class="modal-box">
 
@@ -254,14 +257,13 @@ cursor:pointer;
   </div>
 </div>
 
+<!-- ================= LIBRARY ================= -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <script src="./js/syncEngine.js"></script>
 <script src="./js/index.js"></script>
 <script src="./js/Addtiket.js"></script>
 <script src="./material/material.js"></script>
-
-<!-- HAPUS addtiket.js dari dashboard -->
 
 </body>
 </html>

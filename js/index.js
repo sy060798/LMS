@@ -68,7 +68,7 @@ function loadSummary(){
 /* =========================
    TABLE
 ========================= */
-function loadTable(filter=""){
+function loadTable(filter = "") {
 
   let data = getData();
 
@@ -86,83 +86,67 @@ function loadTable(filter=""){
   });
 
   const body = document.getElementById("ticketBody");
-  if(!body) return;
+  if (!body) return;
 
-  body.innerHTML = rows.map(x => `
-<tr>
+  body.innerHTML = rows.map((x, i) => `
+    <tr>
 
-  <!-- NO -->
-  <td></td>
+      <!-- NO AUTO -->
+      <td>${i + 1}</td>
 
-  <!-- CUSTOMER -->
-  <td>${x.customer || ""}</td>
+      <td>${x.customer || ""}</td>
+      <td>${x.project || ""}</td>
+      <td>${x.spk || ""}</td>
 
-  <!-- PROJECT -->
-  <td>${x.project || ""}</td>
+      <!-- TYPE (BARU) -->
+      <td>${x.type || ""}</td>
 
-  <!-- SPK -->
-  <td>${x.spk || ""}</td>
+      <td>${x.tanggal || ""}</td>
+      <td>${x.city || ""}</td>
 
-  <!-- TYPE -->
-  <td>${x.type || ""}</td>
+      <!-- STATUS -->
+      <td>
+        <select onchange="updateStatus('${x.id}',this.value)">
+          <option value="">Pilih...</option>
+          <option value="Open" ${x.status == "Open" ? "selected" : ""}>Open</option>
+          <option value="Progress" ${x.status == "Progress" ? "selected" : ""}>Progress</option>
+          <option value="Close" ${x.status == "Close" ? "selected" : ""}>Close</option>
+          <option value="Pending" ${x.status == "Pending" ? "selected" : ""}>Pending</option>
+        </select>
+      </td>
 
-  <!-- TANGGAL -->
-  <td>${x.tanggal || ""}</td>
+      <!-- NOTE (BISA KETIK MANUAL) -->
+      <td>
+        <input
+          value="${x.note || ""}"
+          oninput="updateNote('${x.id}',this.value)"
+          style="width:150px;padding:6px;border:1px solid #ccc;border-radius:6px;">
+      </td>
 
-  <!-- CITY -->
-  <td>${x.city || ""}</td>
+      <!-- AKSI -->
+      <td>
+        <div style="display:flex;gap:6px;justify-content:center;">
 
-  <!-- STATUS -->
-  <td>
-    <select onchange="updateStatus('${x.id}',this.value)">
-      <option value="">Pilih...</option>
-      <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
-      <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
-      <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
-      <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-    </select>
-  </td>
+          <button onclick="openMaterialById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
+            📦
+          </button>
 
-  <!-- NOTE -->
-  <td>
-    <input value="${x.note || ""}"
-      oninput="updateNote('${x.id}',this.value)">
-  </td>
+          <button onclick="openEdit('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
+            ✏️
+          </button>
 
-  <!-- AKSI -->
-  <td>
-    <div style="display:flex;gap:6px;justify-content:center;">
+          <button onclick="hapusTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
+            🗑️
+          </button>
 
-      <button onclick="openMaterialById('${x.id}')"
-        style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
-        📦
-      </button>
+        </div>
+      </td>
 
-      <button onclick="openEdit('${x.id}')"
-        style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
-        ✏️
-      </button>
-
-      <button onclick="hapusTicketById('${x.id}')"
-        style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
-        🗑️
-      </button>
-
-    </div>
-  </td>
-
-</tr>
-`).join("");
-}
-
-/* =========================
-   SEARCH
-========================= */
-const search = document.getElementById("searchCustomer");
-if(search){
-  search.addEventListener("input",function(){
-    loadTable(this.value);
-  });
+    </tr>
+  `).join("");
 }
 
 /* =========================

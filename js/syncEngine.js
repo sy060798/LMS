@@ -45,42 +45,35 @@ const DB = {
 
   saveTickets(data){
     localStorage.setItem("tickets", JSON.stringify(data));
-  },
-
-  update(mutator){
-
-    let data = this.getTickets();
-    data = mutator(data);
-    this.saveTickets(data);
-
-    return data;
   }
+
 };
 
 /* =========================
-   LOCK (ANTI DOUBLE SYNC)
+   STATE CONTROL
 ========================= */
 let isSyncing = false;
 let saveTimer = null;
 
 /* =========================
-   LOAD FROM SERVER
+   LOAD FROM SERVER (MASTER DATA)
 ========================= */
 async function loadAll(){
 
   if(isSyncing) return;
 
+  isSyncing = true;
+
   try{
 
-    isSyncing = true;
-
-    const res = await fetch(`${SERVER_URL}/api/get?type=LMS&_=${Date.now()}`);
-
-    if(!res.ok) return [];
+    const res = await fetch(`${SERVER_URL}/tickets`);
 
     const data = await res.json();
 
-    if(!Array.isArray(data)) return [];
+    if(!Array.isArray(data)){
+      console.log("DATA INVALID");
+      return [];
+    }
 
     DB.saveTickets(data);
 
@@ -99,7 +92,7 @@ async function loadAll(){
 }
 
 /* =========================
-   SAVE (DEBOUNCE FIX)
+   SAVE (DEBOUNCE SAFE)
 ========================= */
 function saveAll(){
 
@@ -111,13 +104,10 @@ function saveAll(){
 
       const data = DB.getTickets();
 
-      await fetch(`${SERVER_URL}/api/save`, {
+      await fetch(`${SERVER_URL}/tickets/bulk-save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "LMS",
-          data
-        })
+        body: JSON.stringify(data)
       });
 
       await loadAll();
@@ -127,41 +117,44 @@ function saveAll(){
       showToast("❌ Save gagal", "error");
     }
 
-  }, 500); // 🔥 anti spam request
+  }, 500);
 
 }
 
 /* =========================
-   CORE UPDATE
+   UPDATE 1 TICKET (SAFE PATCH STYLE)
 ========================= */
 function updateTicket(id, callback){
 
-  DB.update(data => {
+  let data = DB.getTickets();
 
-    const i = data.findIndex(t => t.id === id);
+  let index = data.findIndex(t => t.id === id);
 
-    if(i !== -1){
-      data[i] = callback(data[i]);
-    }
+  if(index === -1) return;
 
-    return data;
-  });
+  data[index] = callback({ ...data[index] });
 
-  saveAll(); // 🔥 AUTO SAVE AMAN
-}
-
-/* =========================
-   DELETE
-========================= */
-function deleteTicket(id){
-
-  DB.update(data => data.filter(t => t.id !== id));
+  DB.saveTickets(data);
 
   saveAll();
 }
 
 /* =========================
-   SAFE HELPERS
+   DELETE SAFE
+========================= */
+function deleteTicket(id){
+
+  let data = DB.getTickets();
+
+  data = data.filter(t => t.id !== id);
+
+  DB.saveTickets(data);
+
+  saveAll();
+}
+
+/* =========================
+   HELPERS
 ========================= */
 function updateNote(id, note){
   updateTicket(id, t => {
@@ -206,7 +199,7 @@ window.syncEngine = {
 };
 
 /* =========================
-   GLOBAL EXPOSE
+   GLOBAL EXPORT
 ========================= */
 window.DB = DB;
 window.SERVER_URL = SERVER_URL;

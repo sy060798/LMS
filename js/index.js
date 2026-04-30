@@ -4,14 +4,14 @@ let noteTimer = {};
 let editId = null;
 
 /* =========================
-   GET DATA (ONLY FROM SYNC ENGINE)
+   GET DATA
 ========================= */
 function getData(){
   return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   NOTE (DEBOUNCE SAFE → SYNC ENGINE)
+   NOTE
 ========================= */
 window.updateNote = function(id,value){
 
@@ -66,23 +66,23 @@ function loadSummary(){
 }
 
 /* =========================
-   TABLE
+   TABLE + SPK FILTER
 ========================= */
-function loadTable(filter = "") {
+window.loadTable = function(filter = "") {
 
   let data = getData();
 
- let rows = data.filter(x => {
+  let k = (filter || "").toLowerCase().trim();
 
-  let k = filter.toLowerCase().trim();
+  let rows = data.filter(x => {
 
-  // kalau kosong → tampil semua
-  if (!k) return true;
+    // kalau kosong tampil semua
+    if (!k) return true;
 
-  // hanya SPK
-  return (x.spk || "").toLowerCase().includes(k);
+    // SPK ONLY FILTER
+    return (x.spk || "").toLowerCase().includes(k);
 
-});
+  });
 
   const body = document.getElementById("ticketBody");
   if (!body) return;
@@ -90,12 +90,12 @@ function loadTable(filter = "") {
   body.innerHTML = rows.map((x, i) => `
 <tr>
 
-  <td>${i + 1}</td> <!-- FIX NO AUTO URUT -->
+  <td>${i + 1}</td>
 
   <td>${x.customer || ""}</td>
   <td>${x.project || ""}</td>
   <td>${x.spk || ""}</td>
-  <td>${x.type || ""}</td> <!-- TYPE TAMBAH -->
+  <td>${x.type || ""}</td>
   <td>${x.tanggal || ""}</td>
   <td>${x.city || ""}</td>
 
@@ -110,40 +110,35 @@ function loadTable(filter = "") {
     </select>
   </td>
 
+  <!-- NOTE -->
+  <td>
+    <input
+      value="${x.note || ""}"
+      oninput="updateNote('${x.id}',this.value)"
+      style="width:150px;padding:6px;border:1px solid #ccc;border-radius:6px;">
+  </td>
 
-      <!-- NOTE (BISA KETIK MANUAL) -->
-      <td>
-        <input
-          value="${x.note || ""}"
-          oninput="updateNote('${x.id}',this.value)"
-          style="width:150px;padding:6px;border:1px solid #ccc;border-radius:6px;">
-      </td>
+  <!-- AKSI -->
+  <td>
+    <div style="display:flex;gap:6px;justify-content:center;">
 
-      <!-- AKSI -->
-      <td>
-        <div style="display:flex;gap:6px;justify-content:center;">
+      <button onclick="openMaterialById('${x.id}')">📦</button>
+      <button onclick="openEdit('${x.id}')">✏️</button>
+      <button onclick="hapusTicketById('${x.id}')">🗑️</button>
 
-          <button onclick="openMaterialById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
-            📦
-          </button>
+    </div>
+  </td>
 
-          <button onclick="openEdit('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
-            ✏️
-          </button>
+</tr>
+`).join("");
+};
 
-          <button onclick="hapusTicketById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
-            🗑️
-          </button>
-
-        </div>
-      </td>
-
-    </tr>
-  `).join("");
-}
+/* =========================
+   SEARCH TRIGGER FIX
+========================= */
+window.searchSPK = function(val){
+  loadTable(val);
+};
 
 /* =========================
    MATERIAL
@@ -154,7 +149,7 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT POPUP
+   EDIT
 ========================= */
 window.openEdit = function(id){
 
@@ -194,7 +189,7 @@ window.saveEdit = function(){
 
   closeEdit();
   loadSummary();
-  loadTable(search ? search.value : "");
+  loadTable();
 };
 
 /* =========================
@@ -205,24 +200,18 @@ window.hapusTicketById = function(id){
   if(!confirm("Hapus ticket ini?")) return;
 
   window.syncEngine.deleteTicket(id);
-
   window.syncEngine.saveAll();
 
   loadSummary();
-  loadTable(search ? search.value : "");
+  loadTable();
 };
 
-   /* =========================
-   EXPORT EXCEL + MATERIAL FLAT
+/* =========================
+   EXPORT EXCEL
 ========================= */
 window.exportExcel = function () {
 
-  let data = window.syncEngine?.DB?.getTickets?.() || [];
-
-  if (!data.length) {
-    alert("Data kosong!");
-    return;
-  }
+  let data = getData();
 
   let exportData = data.map((x, i) => {
 
@@ -238,9 +227,6 @@ window.exportExcel = function () {
       Note: x.note || ""
     };
 
-    /* =========================
-       MATERIAL (HANYA QTY > 0)
-    ========================= */
     let matList = (x.material || [])
       .map(m => {
 
@@ -253,7 +239,7 @@ window.exportExcel = function () {
           name = m[0] || "";
           qty  = Number(m[1]) || 0;
         } else {
-          name = m.name || m.nama || "";
+          name = m.name || "";
           qty  = Number(m.qty) || 0;
         }
 

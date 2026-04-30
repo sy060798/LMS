@@ -35,7 +35,7 @@ function showToast(msg, type = "success") {
 }
 
 /* =========================
-   LOCAL DB (SOURCE OF TRUTH)
+   LOCAL DB (CACHE ONLY)
 ========================= */
 const DB = {
 
@@ -55,13 +55,13 @@ const DB = {
 
     return data;
   }
-
 };
 
 /* =========================
-   LOCK SYSTEM (ANTI DOUBLE SYNC)
+   LOCK (ANTI DOUBLE SYNC)
 ========================= */
 let isSyncing = false;
+let saveTimer = null;
 
 /* =========================
    LOAD FROM SERVER
@@ -99,33 +99,40 @@ async function loadAll(){
 }
 
 /* =========================
-   SAVE SERVER
+   SAVE (DEBOUNCE FIX)
 ========================= */
-async function saveAll(){
+function saveAll(){
 
-  try{
+  clearTimeout(saveTimer);
 
-    const data = DB.getTickets();
+  saveTimer = setTimeout(async () => {
 
-    await fetch(`${SERVER_URL}/api/save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "LMS",
-        data
-      })
-    });
+    try{
 
-    await loadAll();
+      const data = DB.getTickets();
 
-  }catch(err){
-    console.log("SAVE ERROR:", err);
-    showToast("❌ Save gagal", "error");
-  }
+      await fetch(`${SERVER_URL}/api/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "LMS",
+          data
+        })
+      });
+
+      await loadAll();
+
+    }catch(err){
+      console.log("SAVE ERROR:", err);
+      showToast("❌ Save gagal", "error");
+    }
+
+  }, 500); // 🔥 anti spam request
+
 }
 
 /* =========================
-   UPDATE SINGLE TICKET (ANTI BENTROK CORE)
+   CORE UPDATE
 ========================= */
 function updateTicket(id, callback){
 
@@ -139,45 +146,40 @@ function updateTicket(id, callback){
 
     return data;
   });
+
+  saveAll(); // 🔥 AUTO SAVE AMAN
 }
 
 /* =========================
-   DELETE SAFE (FIX BALIK DATA)
+   DELETE
 ========================= */
 function deleteTicket(id){
 
   DB.update(data => data.filter(t => t.id !== id));
+
+  saveAll();
 }
 
 /* =========================
-   MATERIAL UPDATE SAFE
-========================= */
-function updateMaterial(id, material){
-
-  updateTicket(id, t => {
-    t.material = material;
-    return t;
-  });
-}
-
-/* =========================
-   NOTE UPDATE SAFE
+   SAFE HELPERS
 ========================= */
 function updateNote(id, note){
-
   updateTicket(id, t => {
     t.note = note;
     return t;
   });
 }
 
-/* =========================
-   STATUS UPDATE SAFE
-========================= */
 function updateStatus(id, status){
-
   updateTicket(id, t => {
     t.status = status;
+    return t;
+  });
+}
+
+function updateMaterial(id, material){
+  updateTicket(id, t => {
+    t.material = material;
     return t;
   });
 }
@@ -194,9 +196,9 @@ window.syncEngine = {
 
   updateTicket,
   deleteTicket,
-  updateMaterial,
   updateNote,
   updateStatus,
+  updateMaterial,
 
   get isSyncing(){
     return isSyncing;
@@ -204,7 +206,7 @@ window.syncEngine = {
 };
 
 /* =========================
-   GLOBAL EXPOSE (OPTIONAL LEGACY)
+   GLOBAL EXPOSE
 ========================= */
 window.DB = DB;
 window.SERVER_URL = SERVER_URL;

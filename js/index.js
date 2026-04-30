@@ -94,7 +94,8 @@ function loadTable(filter=""){
       (x.customer || "").toLowerCase().includes(k) ||
       (x.project || "").toLowerCase().includes(k) ||
       (x.spk || "").toLowerCase().includes(k) ||
-      (x.city || "").toLowerCase().includes(k)
+      (x.city || "").toLowerCase().includes(k) ||
+      (x.type || "").toLowerCase().includes(k)
     );
 
   });
@@ -111,6 +112,7 @@ function loadTable(filter=""){
       <td>${x.spk || ""}</td>
       <td>${x.tanggal || ""}</td>
       <td>${x.city || ""}</td>
+      <td>${x.type || ""}</td>
 
       <td>
         <select onchange="updateStatus('${x.id}',this.value)"
@@ -218,21 +220,23 @@ window.editTicketById = function(id){
 
       <h2 style="margin-top:0;">Edit Ticket</h2>
 
-      <input id="e_customer" placeholder="Customer"
-      value="${x.customer || ""}"
+      <input id="e_customer" value="${x.customer || ""}" placeholder="Customer"
       style="width:100%;padding:10px;margin-bottom:10px;">
 
-      <input id="e_project" placeholder="Project"
-      value="${x.project || ""}"
+      <input id="e_project" value="${x.project || ""}" placeholder="Project"
       style="width:100%;padding:10px;margin-bottom:10px;">
 
-      <input id="e_spk" placeholder="SPK"
-      value="${x.spk || ""}"
+      <input id="e_spk" value="${x.spk || ""}" placeholder="SPK"
       style="width:100%;padding:10px;margin-bottom:10px;">
 
-      <input id="e_city" placeholder="City"
-      value="${x.city || ""}"
+      <input id="e_city" value="${x.city || ""}" placeholder="City"
+      style="width:100%;padding:10px;margin-bottom:10px;">
+
+      <select id="e_type"
       style="width:100%;padding:10px;margin-bottom:15px;">
+        <option value="Activation" ${x.type=="Activation"?"selected":""}>Activation</option>
+        <option value="TroubleShooting" ${x.type=="TroubleShooting"?"selected":""}>TroubleShooting</option>
+      </select>
 
       <div style="display:flex;gap:10px;justify-content:end;">
 
@@ -252,7 +256,7 @@ window.editTicketById = function(id){
   </div>
   `;
 
-  document.body.insertAdjacentHTML("beforeend",html);
+  document.body.insertAdjacentHTML("beforeend", html);
 };
 
 /* =========================
@@ -268,6 +272,7 @@ window.saveEditTicket = function(id){
   tickets[idx].project  = document.getElementById("e_project").value;
   tickets[idx].spk      = document.getElementById("e_spk").value;
   tickets[idx].city     = document.getElementById("e_city").value;
+  tickets[idx].type     = document.getElementById("e_type").value;
 
   localStorage.setItem("tickets", JSON.stringify(tickets));
 

@@ -9,7 +9,7 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   AMBIL DATA DARI SYNC ENGINE
+   GET DATA
 ========================= */
 function getData(){
   return window.syncEngine?.DB?.getTickets?.() || [];
@@ -55,52 +55,55 @@ function loadTable(filter=""){
 
   if(!body) return;
 
- body.innerHTML = rows.slice(-50).reverse().map((x, i) => {
+  body.innerHTML = rows.slice(-50).reverse().map((x, i) => {
 
-  return `
-  <tr>
+    return `
+    <tr>
 
-    <!-- NO URUT (UI ONLY) -->
-    <td>${i + 1}</td>
+      <!-- HEADER NO (UI ONLY) -->
+      <td>${i + 1}</td>
 
-    <!-- SPK = ID UTAMA -->
-    <td><b>${x.spk || "-"}</b></td>
+      <!-- SPK = PRIMARY ID -->
+      <td><b>${x.spk || "-"}</b></td>
 
-    <td>${x.customer || ""}</td>
-    <td>${x.project || ""}</td>
-    <td>${x.tanggal || ""}</td>
-    <td>${x.city || ""}</td>
-    <td>${x.type || ""}</td>
+      <td>${x.customer || ""}</td>
+      <td>${x.project || ""}</td>
+      <td>${x.tanggal || ""}</td>
+      <td>${x.city || ""}</td>
+      <td>${x.type || ""}</td>
 
-    <td>
-      <select onchange="updateStatus('${x.id}',this.value)">
-        <option value="">Pilih</option>
-        <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
-        <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
-        <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
-        <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-      </select>
-    </td>
+      <td>
+        <select onchange="updateStatus('${x.id}',this.value)">
+          <option value="">Pilih</option>
+          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+        </select>
+      </td>
 
-    <td>
-      <input type="text"
-        value="${x.note || ""}"
-        oninput="updateNote('${x.id}',this.value)">
-    </td>
+      <td>
+        <input type="text"
+          value="${x.note || ""}"
+          oninput="updateNote('${x.id}',this.value)">
+      </td>
 
-    <td>
-      <div style="display:flex;gap:6px;justify-content:center;">
-        <button onclick="openMaterialById('${x.id}')">📦</button>
-        <button onclick="editTicketById('${x.id}')">✏️</button>
-        <button onclick="hapusTicketById('${x.id}')">🗑️</button>
-      </div>
-    </td>
+      <!-- ACTION -->
+      <td>
+        <div style="display:flex;gap:6px;justify-content:center;">
+          <button onclick="openMaterialById('${x.id}')">📦</button>
+          <button onclick="openEditPopup('${x.id}')">✏️</button>
+          <button onclick="hapusTicketById('${x.id}')">🗑️</button>
+        </div>
+      </td>
 
-  </tr>
-  `;
-}).join("");
+    </tr>
+    `;
+  }).join("");
+}
+
 /* =========================
-   NOTE (LOCAL SYNC)
+   NOTE
 ========================= */
 window.updateNote = function(id,val){
 
@@ -112,7 +115,7 @@ window.updateNote = function(id,val){
 };
 
 /* =========================
-   STATUS (SYNC FIX)
+   STATUS
 ========================= */
 window.updateStatus = function(id,val){
 
@@ -125,35 +128,29 @@ window.updateStatus = function(id,val){
 };
 
 /* =========================
-   SEARCH
+   POPUP EDIT (PENSIL)
 ========================= */
-if(search){
-  search.addEventListener("input",function(){
-    loadTable(this.value);
-  });
-}
-
-/* =========================
-   MATERIAL
-========================= */
-window.openMaterialById = function(id){
-  sessionStorage.setItem("activeTicketId",id);
-  window.location.href = "material/material.html";
-};
-
-/* =========================
-   EDIT (FULL FIX)
-========================= */
-window.editTicketById = function(id){
+window.openEditPopup = function(id){
 
   let data = getData();
   let x = data.find(t => t.id == id);
   if(!x) return;
 
-  let customer = prompt("Customer", x.customer);
-  let project  = prompt("Project", x.project);
-  let spk      = prompt("SPK", x.spk);
-  let city     = prompt("City", x.city);
+  let popup = prompt(
+`EDIT TICKET
+
+Customer: ${x.customer}
+Project : ${x.project}
+SPK     : ${x.spk}
+City    : ${x.city}
+
+➡ isi baru (pisahkan pakai | )
+format: customer|project|spk|city`
+  );
+
+  if(!popup) return;
+
+  let [customer, project, spk, city] = popup.split("|");
 
   if(!spk) return alert("SPK wajib");
 
@@ -167,10 +164,10 @@ window.editTicketById = function(id){
   }
 
   window.syncEngine.updateTicket(id, t => {
-    t.customer = customer || t.customer;
-    t.project = project || t.project;
-    t.spk = spk;
-    t.city = city || t.city;
+    t.customer = customer?.trim() || t.customer;
+    t.project  = project?.trim() || t.project;
+    t.spk      = spk?.trim();
+    t.city     = city?.trim() || t.city;
     return t;
   });
 
@@ -178,7 +175,7 @@ window.editTicketById = function(id){
 };
 
 /* =========================
-   DELETE (FIX 100%)
+   DELETE
 ========================= */
 window.hapusTicketById = function(id){
 
@@ -189,7 +186,24 @@ window.hapusTicketById = function(id){
 };
 
 /* =========================
-   SYNC LISTENER
+   MATERIAL
+========================= */
+window.openMaterialById = function(id){
+  sessionStorage.setItem("activeTicketId",id);
+  window.location.href = "material/material.html";
+};
+
+/* =========================
+   SEARCH
+========================= */
+if(search){
+  search.addEventListener("input",function(){
+    loadTable(this.value);
+  });
+}
+
+/* =========================
+   SYNC EVENT
 ========================= */
 window.addEventListener("ticketsUpdated", () => {
   loadSummary();

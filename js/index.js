@@ -256,16 +256,24 @@ window.exportExcel = function () {
     /* =========================
        MATERIAL COLUMN (FLAT)
     ========================= */
-    for (let j = 0; j < maxMat; j++) {
+   for (let j = 0; j < maxMat; j++) {
 
-      let mat = x.material?.[j] || {};
+  let mat = x.material?.[j];
 
-      row[`Material_${j + 1}`] = mat.name || "";
-      row[`Qty_${j + 1}`] = mat.qty || "";
-    }
+  let name = "";
+  let qty = "";
 
-    return row;
-  });
+  if (Array.isArray(mat)) {
+    name = mat[0] || "";
+    qty  = mat[1] || "";
+  } else if (typeof mat === "object" && mat) {
+    name = mat.name || mat.nama || "";
+    qty  = mat.qty || "";
+  }
+
+  row[`Material_${j + 1}`] = name;
+  row[`Qty_${j + 1}`] = qty;
+}
 
   /* =========================
      EXPORT XLSX

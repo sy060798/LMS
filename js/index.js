@@ -207,11 +207,16 @@ window.hapusTicketById = function(id){
 };
 
 /* =========================
-   EXPORT EXCEL
+   EXPORT EXCEL + MATERIAL FLAT
 ========================= */
 window.exportExcel = function () {
 
-  let data = getData();
+  let data = window.syncEngine?.DB?.getTickets?.() || [];
+
+  if (!data.length) {
+    alert("Data kosong!");
+    return;
+  }
 
   let exportData = data.map((x, i) => {
 
@@ -227,6 +232,9 @@ window.exportExcel = function () {
       Note: x.note || ""
     };
 
+    /* =========================
+       MATERIAL (HANYA QTY > 0)
+    ========================= */
     let matList = (x.material || [])
       .map(m => {
 
@@ -237,10 +245,10 @@ window.exportExcel = function () {
 
         if (Array.isArray(m)) {
           name = m[0] || "";
-          qty  = Number(m[1]) || 0;
+          qty = Number(m[1]) || 0;
         } else {
-          name = m.name || "";
-          qty  = Number(m.qty) || 0;
+          name = m.name || m.nama || "";
+          qty = Number(m.qty) || 0;
         }
 
         return qty > 0 ? { name, qty } : null;
@@ -264,7 +272,6 @@ window.exportExcel = function () {
 
   alert("✔ Export berhasil");
 };
-
 /* =========================
    INIT
 ========================= */

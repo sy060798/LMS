@@ -54,9 +54,10 @@ const DB = {
 ========================= */
 let isSyncing = false;
 let saveTimer = null;
+let autoRefreshTimer = null;
 
 /* =========================
-   LOAD FROM SERVER (MASTER DATA)
+   LOAD FROM SERVER
 ========================= */
 async function loadAll(){
 
@@ -67,7 +68,6 @@ async function loadAll(){
   try{
 
     const res = await fetch(`${SERVER_URL}/tickets`);
-
     const data = await res.json();
 
     if(!Array.isArray(data)){
@@ -89,6 +89,29 @@ async function loadAll(){
   }finally{
     isSyncing = false;
   }
+}
+
+/* =========================
+   AUTO REFRESH 10 MENIT
+========================= */
+function startAutoRefresh(){
+
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+
+  autoRefreshTimer = setInterval(() => {
+    loadAll();
+  }, 10 * 60 * 1000);
+
+}
+
+/* =========================
+   FORCE BACK DASHBOARD
+========================= */
+function forceToDashboard(){
+
+  sessionStorage.setItem("forceDashboard", "1");
+  window.location.href = "../index.html";
+
 }
 
 /* =========================
@@ -122,7 +145,7 @@ function saveAll(){
 }
 
 /* =========================
-   UPDATE 1 TICKET (SAFE PATCH STYLE)
+   UPDATE TICKET
 ========================= */
 function updateTicket(id, callback){
 
@@ -140,7 +163,7 @@ function updateTicket(id, callback){
 }
 
 /* =========================
-   DELETE SAFE
+   DELETE
 ========================= */
 function deleteTicket(id){
 
@@ -193,6 +216,9 @@ window.syncEngine = {
   updateStatus,
   updateMaterial,
 
+  startAutoRefresh,
+  forceToDashboard,
+
   get isSyncing(){
     return isSyncing;
   }
@@ -205,8 +231,13 @@ window.DB = DB;
 window.SERVER_URL = SERVER_URL;
 
 /* =========================
-   AUTO LOAD
+   AUTO LOAD + AUTO START
 ========================= */
-document.addEventListener("DOMContentLoaded", loadAll);
+document.addEventListener("DOMContentLoaded", function () {
+
+  loadAll();
+  startAutoRefresh();
+
+});
 
 })();

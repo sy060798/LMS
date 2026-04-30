@@ -1,5 +1,8 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+/* =========================
+   STATE
+========================= */
 let data = [];
 
 /* =========================
@@ -9,14 +12,14 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   GET DATA
+   GET DATA FROM SYNC ENGINE
 ========================= */
 function getData(){
   return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   SUMMARY
+   RENDER SUMMARY
 ========================= */
 function loadSummary(){
 
@@ -34,7 +37,7 @@ function loadSummary(){
   if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
   if(close) close.textContent = data.filter(x => x.status=="Close").length;
   if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
-  if(mat) mat.textContent = data.filter(x => x.material && x.material.length > 0).length;
+  if(mat) mat.textContent = data.filter(x => x.material?.length > 0).length;
 }
 
 /* =========================
@@ -45,25 +48,25 @@ function loadTable(filter=""){
   let data = getData();
   let k = filter.toLowerCase();
 
-  let rows = data.filter(x => (
-    (x.customer || "").toLowerCase().includes(k) ||
-    (x.project || "").toLowerCase().includes(k) ||
-    (x.spk || "").toLowerCase().includes(k) ||
-    (x.city || "").toLowerCase().includes(k) ||
-    (x.type || "").toLowerCase().includes(k)
-  ));
+  let rows = data.filter(x =>
+    (x.customer||"").toLowerCase().includes(k) ||
+    (x.project||"").toLowerCase().includes(k) ||
+    (x.spk||"").toLowerCase().includes(k) ||
+    (x.city||"").toLowerCase().includes(k) ||
+    (x.type||"").toLowerCase().includes(k)
+  );
 
   if(!body) return;
 
-  body.innerHTML = rows.slice(-50).reverse().map((x, i) => {
+  body.innerHTML = rows.slice(-100).reverse().map((x,i)=>{
 
     return `
     <tr>
 
-      <!-- HEADER NO (UI ONLY) -->
-      <td>${i + 1}</td>
+      <!-- NO UI ONLY -->
+      <td>${i+1}</td>
 
-      <!-- SPK = PRIMARY ID -->
+      <!-- SPK = UNIQUE ID -->
       <td><b>${x.spk || "-"}</b></td>
 
       <td>${x.customer || ""}</td>
@@ -88,12 +91,11 @@ function loadTable(filter=""){
           oninput="updateNote('${x.id}',this.value)">
       </td>
 
-      <!-- ACTION -->
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
-          <button onclick="openMaterialById('${x.id}')">📦</button>
-          <button onclick="openEditPopup('${x.id}')">✏️</button>
-          <button onclick="hapusTicketById('${x.id}')">🗑️</button>
+          <button onclick="openMaterial('${x.id}')">📦</button>
+          <button onclick="openEdit('${x.id}')">✏️</button>
+          <button onclick="deleteTicket('${x.id}')">🗑️</button>
         </div>
       </td>
 
@@ -103,23 +105,20 @@ function loadTable(filter=""){
 }
 
 /* =========================
-   NOTE
+   NOTE UPDATE
 ========================= */
 window.updateNote = function(id,val){
-
-  window.syncEngine.updateTicket(id, t => {
+  window.syncEngine.updateTicket(id,t=>{
     t.note = val;
     return t;
   });
-
 };
 
 /* =========================
-   STATUS
+   STATUS UPDATE
 ========================= */
 window.updateStatus = function(id,val){
-
-  window.syncEngine.updateTicket(id, t => {
+  window.syncEngine.updateTicket(id,t=>{
     t.status = val;
     return t;
   });
@@ -128,42 +127,41 @@ window.updateStatus = function(id,val){
 };
 
 /* =========================
-   POPUP EDIT (PENSIL)
+   POPUP EDIT (RAPI SIMPLE)
 ========================= */
-window.openEditPopup = function(id){
+window.openEdit = function(id){
 
   let data = getData();
-  let x = data.find(t => t.id == id);
+  let x = data.find(t=>t.id===id);
   if(!x) return;
 
-  let popup = prompt(
+  let input = prompt(
 `EDIT TICKET
 
-Customer: ${x.customer}
-Project : ${x.project}
-SPK     : ${x.spk}
-City    : ${x.city}
+format:
+customer|project|spk|city
 
-➡ isi baru (pisahkan pakai | )
-format: customer|project|spk|city`
+data sekarang:
+${x.customer} | ${x.project} | ${x.spk} | ${x.city}`
   );
 
-  if(!popup) return;
+  if(!input) return;
 
-  let [customer, project, spk, city] = popup.split("|");
+  let [customer, project, spk, city] = input.split("|");
 
   if(!spk) return alert("SPK wajib");
 
   let duplicate = data.some(t =>
-    t.id !== id && (t.spk || "").toLowerCase() === spk.toLowerCase()
+    t.id !== id &&
+    (t.spk||"").toLowerCase() === spk.toLowerCase()
   );
 
   if(duplicate){
-    alert("❌ SPK sudah dipakai!");
+    alert("❌ SPK sudah dipakai");
     return;
   }
 
-  window.syncEngine.updateTicket(id, t => {
+  window.syncEngine.updateTicket(id,t=>{
     t.customer = customer?.trim() || t.customer;
     t.project  = project?.trim() || t.project;
     t.spk      = spk?.trim();
@@ -177,7 +175,7 @@ format: customer|project|spk|city`
 /* =========================
    DELETE
 ========================= */
-window.hapusTicketById = function(id){
+window.deleteTicket = function(id){
 
   if(!confirm("Hapus ticket ini?")) return;
 
@@ -186,9 +184,9 @@ window.hapusTicketById = function(id){
 };
 
 /* =========================
-   MATERIAL
+   MATERIAL PAGE
 ========================= */
-window.openMaterialById = function(id){
+window.openMaterial = function(id){
   sessionStorage.setItem("activeTicketId",id);
   window.location.href = "material/material.html";
 };
@@ -197,25 +195,23 @@ window.openMaterialById = function(id){
    SEARCH
 ========================= */
 if(search){
-  search.addEventListener("input",function(){
-    loadTable(this.value);
+  search.addEventListener("input",e=>{
+    loadTable(e.target.value);
   });
 }
 
 /* =========================
-   SYNC EVENT
+   SYNC EVENT LISTENER
 ========================= */
-window.addEventListener("ticketsUpdated", () => {
+window.addEventListener("ticketsUpdated",()=>{
   loadSummary();
-  loadTable(search ? search.value : "");
+  loadTable(search?.value || "");
 });
 
 /* =========================
    INIT
 ========================= */
-window.addEventListener("DOMContentLoaded", () => {
-  loadSummary();
-  loadTable();
-});
+loadSummary();
+loadTable();
 
 });

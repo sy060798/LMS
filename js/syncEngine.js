@@ -4,6 +4,16 @@ const SERVER_URL =
 window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
+   MEMORY STATE (NO LOCAL STORAGE)
+========================= */
+let isEditing = {
+  note: {},
+  status: {}
+};
+
+let autoRefreshInterval = null;
+
+/* =========================
    TOAST
 ========================= */
 function showToast(msg, type = "success") {
@@ -11,19 +21,21 @@ function showToast(msg, type = "success") {
   const toast = document.createElement("div");
   toast.textContent = msg;
 
-  toast.style.position = "fixed";
-  toast.style.bottom = "20px";
-  toast.style.right = "20px";
-  toast.style.padding = "12px 16px";
-  toast.style.borderRadius = "10px";
-  toast.style.color = "#fff";
-  toast.style.fontSize = "14px";
-  toast.style.zIndex = "99999";
-  toast.style.boxShadow = "0 8px 20px rgba(0,0,0,.18)";
-
-  toast.style.background =
-    type === "success" ? "#28a745" :
-    type === "error" ? "#dc3545" : "#333";
+  Object.assign(toast.style, {
+    position: "fixed",
+    bottom: "20px",
+    right: "20px",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    color: "#fff",
+    fontSize: "14px",
+    zIndex: "99999",
+    boxShadow: "0 8px 20px rgba(0,0,0,.18)",
+    transition: "opacity .3s",
+    background:
+      type === "success" ? "#28a745" :
+      type === "error" ? "#dc3545" : "#333"
+  });
 
   document.body.appendChild(toast);
 
@@ -70,6 +82,10 @@ async function saveAll(data) {
       body: JSON.stringify(data)
     });
 
+    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
+      detail: data
+    }));
+
     showToast("✅ Saved to server");
 
   } catch (err) {
@@ -86,7 +102,6 @@ async function updateTicket(id, callback) {
   const data = await loadAll();
 
   const index = data.findIndex(t => t.id === id);
-
   if (index === -1) return;
 
   data[index] = callback({ ...data[index] });
@@ -95,40 +110,104 @@ async function updateTicket(id, callback) {
 }
 
 /* =========================
-   DELETE TICKET
+   DELETE
 ========================= */
 async function deleteTicket(id) {
 
-  let data = await loadAll();
+  const data = await loadAll();
+  const filtered = data.filter(t => t.id !== id);
 
-  data = data.filter(t => t.id !== id);
-
-  await saveAll(data);
+  await saveAll(filtered);
 }
 
 /* =========================
    HELPERS
 ========================= */
 async function updateNote(id, note) {
-  return updateTicket(id, t => {
-    t.note = note;
-    return t;
-  });
+  isEditing.note[id] = false;
+
+  return updateTicket(id, t => ({
+    ...t,
+    note
+  }));
 }
 
 async function updateStatus(id, status) {
-  return updateTicket(id, t => {
-    t.status = status;
-    return t;
-  });
+  isEditing.status[id] = false;
+
+  return updateTicket(id, t => ({
+    ...t,
+    status
+  }));
 }
 
 async function updateMaterial(id, material) {
-  return updateTicket(id, t => {
-    t.material = material;
-    return t;
+  return updateTicket(id, t => ({
+    ...t,
+    material
+  }));
+}
+
+/* =========================
+   BIND INPUT (ANTI REFRESH BUG)
+========================= */
+function bindNoteInput(id, input) {
+
+  input.addEventListener("focus", () => {
+    isEditing.note[id] = true;
+  });
+
+  input.addEventListener("blur", async () => {
+    isEditing.note[id] = false;
+    await updateNote(id, input.value);
   });
 }
+
+function bindStatusSelect(id, select) {
+
+  select.addEventListener("focus", () => {
+    isEditing.status[id] = true;
+  });
+
+  select.addEventListener("change", async () => {
+    await updateStatus(id, select.value);
+    isEditing.status[id] = false;
+  });
+}
+
+/* =========================
+   SMART AUTO REFRESH
+========================= */
+function startAutoRefresh() {
+
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+
+  autoRefreshInterval = setInterval(async () => {
+
+    const editingNow =
+      Object.values(isEditing.note).includes(true) ||
+      Object.values(isEditing.status).includes(true);
+
+    if (editingNow) {
+      console.log("⏸ skip refresh (user sedang edit)");
+      return;
+    }
+
+    const data = await loadAll();
+
+    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
+      detail: data
+    }));
+
+  }, 3000); // 3 detik
+}
+
+/* =========================
+   INIT
+========================= */
+document.addEventListener("DOMContentLoaded", () => {
+  startAutoRefresh();
+});
 
 /* =========================
    PUBLIC API
@@ -141,7 +220,10 @@ window.syncEngine = {
   deleteTicket,
   updateNote,
   updateStatus,
-  updateMaterial
+  updateMaterial,
+
+  bindNoteInput,
+  bindStatusSelect
 
 };
 

@@ -14,12 +14,15 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   LOAD DATA FROM SERVER
+   LOAD DATA
 ========================= */
 async function loadData(){
   try {
     const res = await fetch(`${SERVER_URL}/tickets`);
     data = await res.json();
+
+    // 🔥 SORT BIAR STABIL
+    data.sort((a,b) => new Date(a.created) - new Date(b.created));
 
     loadSummary();
     loadTable(search ? search.value : "");
@@ -30,7 +33,7 @@ async function loadData(){
 }
 
 /* =========================
-   UPDATE NOTE (SERVER)
+   SAVE NOTE
 ========================= */
 async function saveNote(id,value){
 
@@ -47,7 +50,7 @@ async function saveNote(id,value){
 }
 
 /* =========================
-   UPDATE STATUS (SERVER)
+   SAVE STATUS
 ========================= */
 async function saveStatus(id,value){
 
@@ -90,17 +93,15 @@ function loadSummary(){
 ========================= */
 function loadTable(filter=""){
 
-  let rows = data.filter(x=>{
-    let k = filter.toLowerCase();
+  let k = filter.toLowerCase();
 
-    return (
-      (x.customer || "").toLowerCase().includes(k) ||
-      (x.project || "").toLowerCase().includes(k) ||
-      (x.spk || "").toLowerCase().includes(k) ||
-      (x.city || "").toLowerCase().includes(k) ||
-      (x.type || "").toLowerCase().includes(k)
-    );
-  });
+  let rows = data.filter(x => (
+    (x.customer || "").toLowerCase().includes(k) ||
+    (x.project || "").toLowerCase().includes(k) ||
+    (x.spk || "").toLowerCase().includes(k) ||
+    (x.city || "").toLowerCase().includes(k) ||
+    (x.type || "").toLowerCase().includes(k)
+  ));
 
   if(!body) return;
 
@@ -109,7 +110,7 @@ function loadTable(filter=""){
     return `
     <tr>
 
-      <td>${x.no || i+1}</td>
+      <td>${x.no ?? "-"}</td>
       <td>${x.customer || ""}</td>
       <td>${x.project || ""}</td>
       <td>${x.spk || ""}</td>
@@ -149,7 +150,7 @@ function loadTable(filter=""){
 }
 
 /* =========================
-   GLOBAL
+   GLOBAL FUNCTIONS
 ========================= */
 window.updateNote = function(id,val){
   saveNote(id,val);
@@ -177,7 +178,7 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT (SERVER PATCH)
+   EDIT (ANTI DUPLICATE SPK FIXED)
 ========================= */
 window.editTicketById = async function(id){
 
@@ -189,6 +190,20 @@ window.editTicketById = async function(id){
   let spk      = prompt("SPK", x.spk);
   let city     = prompt("City", x.city);
 
+  if(!spk) return alert("SPK tidak boleh kosong");
+
+  let spkClean = spk.toLowerCase();
+
+  // 🔥 CEK DUPLIKAT SPK
+  let duplicate = data.some(t =>
+    t.id !== id && (t.spk || "").toLowerCase() === spkClean
+  );
+
+  if(duplicate){
+    alert("❌ SPK sudah dipakai!");
+    return;
+  }
+
   try {
     await fetch(`${SERVER_URL}/tickets/${id}`, {
       method: "PATCH",
@@ -196,7 +211,7 @@ window.editTicketById = async function(id){
       body: JSON.stringify({
         customer: customer || x.customer,
         project: project || x.project,
-        spk: spk || x.spk,
+        spk: spk,
         city: city || x.city
       })
     });
@@ -209,7 +224,7 @@ window.editTicketById = async function(id){
 };
 
 /* =========================
-   DELETE (SERVER)
+   DELETE
 ========================= */
 window.hapusTicketById = async function(id){
 

@@ -31,11 +31,11 @@ function showToast(msg, type = "success") {
   setTimeout(() => {
     toast.style.opacity = "0";
     setTimeout(() => toast.remove(), 300);
-  }, 2000);
+  }, 2500);
 }
 
 /* =========================
-   LOCAL DB
+   LOCAL CACHE
 ========================= */
 const DB = {
 
@@ -54,7 +54,7 @@ const DB = {
 };
 
 /* =========================
-   ACTIVE TICKET
+   ACTIVE
 ========================= */
 function getActiveTicket(){
 
@@ -74,7 +74,6 @@ function cleanBeforeSave(tickets){
     let x = { ...t };
 
     if(Array.isArray(x.material)){
-
       x.material = x.material
       .filter(m => Number(m.qty) > 0)
       .map(m => ({
@@ -90,20 +89,60 @@ function cleanBeforeSave(tickets){
 }
 
 /* =========================
-   SAVE TO SERVER
+   LOAD SERVER (MASTER)
+========================= */
+async function loadAll(){
+
+  try{
+
+    let res = await fetch(SERVER_URL + "/api/get?type=LMS&_=" + Date.now());
+
+    if(!res.ok){
+      showToast("❌ Gagal ambil data server", "error");
+      return false;
+    }
+
+    let serverData = await res.json();
+
+    if(!Array.isArray(serverData)){
+      showToast("❌ Data server rusak", "error");
+      return false;
+    }
+
+    DB.saveTickets(serverData);
+
+    window.dispatchEvent(new Event("ticketsUpdated"));
+
+    console.log("LOAD OK");
+    return true;
+
+  }catch(err){
+
+    console.log(err);
+    showToast("❌ Load gagal", "error");
+    return false;
+  }
+}
+
+/* =========================
+   SAVE SERVER (MASTER)
+   selalu ambil server dulu
 ========================= */
 async function saveAll(){
 
   try{
 
+    /* ambil terbaru dulu */
+    let ok = await loadAll();
+    if(!ok) return;
+
+    /* ambil local setelah update */
     let tickets = DB.getTickets();
     let cleaned = cleanBeforeSave(tickets);
 
-    DB.saveTickets(cleaned);
-
     let res = await fetch(SERVER_URL + "/api/save", {
       method: "POST",
-      headers: {
+      headers:{
         "Content-Type":"application/json"
       },
       body: JSON.stringify({
@@ -113,9 +152,13 @@ async function saveAll(){
     });
 
     if(!res.ok){
-      showToast("❌ Gagal save ke server", "error");
+      showToast("❌ Gagal save server", "error");
       return;
     }
+
+    DB.saveTickets(cleaned);
+
+    window.dispatchEvent(new Event("ticketsUpdated"));
 
     showToast("✔ Data berhasil disimpan", "success");
     console.log("SAVE OK");
@@ -123,69 +166,45 @@ async function saveAll(){
   }catch(err){
 
     console.log(err);
-    showToast("❌ Server error", "error");
+    showToast("❌ Save gagal", "error");
   }
 }
 
 /* =========================
-   LOAD FROM SERVER
+   REFRESH BUTTON
 ========================= */
-async function loadAll(){
+async function refreshNow(){
 
-  try{
+  let ok = await loadAll();
 
-    let res = await fetch(SERVER_URL + "/api/get?type=LMS");
-
-    if(!res.ok){
-      showToast("❌ Gagal ambil data", "error");
-      return;
-    }
-
-    let serverData = await res.json();
-
-    if(!Array.isArray(serverData)){
-      showToast("❌ Format data salah", "error");
-      return;
-    }
-
-    DB.saveTickets(serverData);
-
-    window.dispatchEvent(new Event("ticketsUpdated"));
-
+  if(ok){
     showToast("✔ Data berhasil di refresh", "success");
-    console.log("LOAD OK");
-
-  }catch(err){
-
-    console.log(err);
-    showToast("❌ Load gagal", "error");
   }
 }
 
 /* =========================
-   MANUAL BUTTON
+   BUTTON MANUAL
 ========================= */
 window.saveNow = saveAll;
-window.loadNow = loadAll;
+window.loadNow = refreshNow;
 
 /* =========================
-   GLOBAL API
+   GLOBAL
 ========================= */
 window.FS = {
   DB,
   getActiveTicket,
   saveAll,
-  loadAll
+  loadAll: refreshNow
 };
 
 /* =========================
-   MANUAL MODE ONLY
+   MANUAL MODE
 =========================
-Tidak auto save
-Tidak auto refresh
-Server = pusat data
-Klik Save = kirim server
+Server = pusat data utama
+Klik Save    = ambil server lalu save server
 Klik Refresh = ambil server
+100 Chrome refresh = sama semua
 ========================= */
 
 })();

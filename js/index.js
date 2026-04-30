@@ -1,60 +1,74 @@
 document.addEventListener("DOMContentLoaded", function () {
 
+let data = [];
 let noteTimer = {};
-let isEditing = {};
-let editId = null;
 
 /* =========================
-   GET DATA (SERVER ONLY)
+   ELEMENT
 ========================= */
-async function getData(){
-  try {
-    const data = await window.syncEngine.loadAll();
-    return Array.isArray(data) ? data : [];
-  } catch (err) {
-    console.log("LOAD ERROR:", err);
-    return [];
-  }
+const body   = document.getElementById("ticketBody");
+const search = document.getElementById("searchCustomer");
+
+/* =========================
+   GET LOCAL
+========================= */
+function getLocal(){
+  return JSON.parse(localStorage.getItem("tickets") || "[]");
 }
 
 /* =========================
-   NOTE (DEBOUNCE SAFE)
+   REFRESH
 ========================= */
-window.updateNote = function(id,value){
-
-  isEditing[id] = true;
-
-  clearTimeout(noteTimer[id]);
-
-  noteTimer[id] = setTimeout(() => {
-
-    window.syncEngine.updateNote(id, value);
-
-    isEditing[id] = false;
-
-  }, 500);
-};
+function refreshData(){
+  data = getLocal();
+}
 
 /* =========================
-   STATUS
+   SAVE NOTE
+   SAVE NOTE (DELAY)
 ========================= */
-window.updateStatus = function(id,value){
+function saveNote(id,value){
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
 
-  if(isEditing[id]) return;
+  tickets[idx].note = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+  clearTimeout(noteTimer[id]);
 
-  isEditing[id] = true;
+  noteTimer[id] = setTimeout(()=>{
 
-  window.syncEngine.updateStatus(id, value);
+    let tickets = getLocal();
+    let idx = tickets.findIndex(x => x.id == id);
+    if(idx === -1) return;
 
-  isEditing[id] = false;
-};
+    tickets[idx].note = value;
+    localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  },500);
+}
+
+/* =========================
+   SAVE STATUS
+========================= */
+function saveStatus(id,value){
+
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
+
+  tickets[idx].status = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  loadSummary();
+}
 
 /* =========================
    SUMMARY
 ========================= */
-async function loadSummary(){
+function loadSummary(){
 
-  let data = await getData();
+  refreshData();
 
   const tot      = document.getElementById("totTicket");
   const open     = document.getElementById("openTicket");
@@ -63,284 +77,195 @@ async function loadSummary(){
   const pending  = document.getElementById("pendingTicket");
   const mat      = document.getElementById("matCount");
 
-  const safe = (v) => Array.isArray(v) ? v : [];
-
   if(tot) tot.textContent = data.length;
-
-  if(open) open.textContent = safe(data).filter(x => x.status=="Open").length;
-  if(progress) progress.textContent = safe(data).filter(x => x.status=="Progress").length;
-  if(close) close.textContent = safe(data).filter(x => x.status=="Close").length;
-  if(pending) pending.textContent = safe(data).filter(x => x.status=="Pending").length;
-  if(mat) mat.textContent = safe(data).filter(x => x.material?.length > 0).length;
+  if(open) open.textContent = data.filter(x => x.status=="Open").length;
+  if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
+  if(close) close.textContent = data.filter(x => x.status=="Close").length;
+  if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
+  if(mat) mat.textContent = data.filter(x => x.material && x.material.length > 0).length;
 }
 
 /* =========================
-   TABLE FILTER (SPK)
+   TABLE
 ========================= */
-window.loadTable = async function(filter = "") {
+function loadTable(filter=""){
 
-  let data = await getData();
+  refreshData();
 
-  let k = (filter || "").toLowerCase().trim();
+  let rows = data.filter(x=>{
 
-  let rows = data.filter(x => {
-    if (!k) return true;
-    return (x.spk || "").toLowerCase().includes(k);
+    let k = filter.toLowerCase();
+
+    return (
+      (x.customer || "").toLowerCase().includes(k) ||
+      (x.project || "").toLowerCase().includes(k) ||
+      (x.spk || "").toLowerCase().includes(k) ||
+      (x.city || "").toLowerCase().includes(k)
+    );
+
   });
 
-  renderTable(rows);
-};
+  if(!body) return;
 
-/* =========================
-   MULTI SPK SEARCH
-========================= */
-window.loadTableBySPK = async function(filter = "") {
+  body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
 
-  let data = await getData();
+    return `
+    <tr>
+      <td>${i+1}</td>
+      <td>${x.customer || ""}</td>
+      <td>${x.project || ""}</td>
+      <td>${x.spk || ""}</td>
+      <td>${x.tanggal || ""}</td>
+      <td>${x.city || ""}</td>
 
-  let list = (filter || "")
-    .toLowerCase()
-    .split(",")
-    .map(x => x.trim())
-    .filter(Boolean);
+      <!-- STATUS -->
+      <td>
+        <select
+          onchange="updateStatus('${x.id}',this.value)"
+          onfocus="this.style.color='#000'"
+          onblur="if(this.value==''){this.style.color='#999'}"
+          style="
+            padding:7px 10px;
+            min-width:120px;
+            padding:8px 10px;
+            min-width:125px;
+            border-radius:10px;
+            border:1px solid #ddd;
+            color:${x.status ? '#000' : '#999'};
+            cursor:pointer;
+            background:#fff;">
 
-  let rows = data.filter(x => {
+          <option value="">Pilih...</option>
+          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
 
-    if (!list.length) return true;
+        </select>
+      </td>
 
-    let spk = (x.spk || "").toLowerCase();
+      <!-- NOTE -->
+      <td>
+        <input
+          type="text"
+          value="${x.note || ""}"
+          placeholder="Isi note..."
+          oninput="updateNote('${x.id}',this.value)"
+          onkeyup="updateNote('${x.id}',this.value)"
+          style="
+            width:160px;
+            padding:7px 10px;
+            width:170px;
+            padding:8px 10px;
+            border:1px solid #ddd;
+            border-radius:10px;">
+      </td>
 
-    return list.some(id => spk.includes(id));
-  });
+      <!-- AKSI -->
+      <td>
+        <div style="display:flex;gap:6px;justify-content:center;">
 
-  renderTable(rows);
-};
+          <button onclick="openMaterialById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
+            📦
+          </button>
 
-/* =========================
-   RENDER TABLE
-========================= */
-function renderTable(rows){
+          <button onclick="editTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
+            ✏️
+          </button>
 
-  const body = document.getElementById("ticketBody");
-  if (!body) return;
+          <button onclick="hapusTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
+            🗑️
+          </button>
 
-  if (!Array.isArray(rows)) rows = [];
+        </div>
+      </td>
+    </tr>
+    `;
 
-  body.innerHTML = rows.map((x, i) => `
-<tr>
-
-  <td>${i + 1}</td>
-  <td>${x.customer || ""}</td>
-  <td>${x.project || ""}</td>
-  <td>${x.spk || ""}</td>
-  <td>${x.type || ""}</td>
-  <td>${x.tanggal || ""}</td>
-  <td>${x.city || ""}</td>
-
-  <td>
-    <select onchange="updateStatus('${x.id}',this.value)">
-      <option value="">Pilih...</option>
-      <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
-      <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
-      <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
-      <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-    </select>
-  </td>
-
-  <td>
-    <input
-      value="${x.note || ""}"
-      oninput="updateNote('${x.id}',this.value)"
-      style="width:150px;padding:6px;border:1px solid #ccc;border-radius:6px;">
-  </td>
-
-  <td>
-    <button onclick="openMaterialById('${x.id}')">📦</button>
-    <button onclick="openEdit('${x.id}')">✏️</button>
-    <button onclick="hapusTicketById('${x.id}')">🗑️</button>
-  </td>
-
-</tr>
-`).join("");
+  }).join("");
 }
 
 /* =========================
-   SEARCH INPUT
+   UPDATE
 ========================= */
-window.searchSPK = function(val){
-  loadTableBySPK(val);
+window.updateNote = function(id,val){
+  saveNote(id,val);
+};
+
+window.updateStatus = function(id,val){
+  saveStatus(id,val);
 };
 
 /* =========================
-   EXPORT EXCEL
+   SEARCH
 ========================= */
-window.exportExcel = async function () {
-
-  let data = await getData();
-
-  if (!data.length) {
-    alert("Data kosong!");
-    return;
-  }
-
-  let filtered = data.filter(x =>
-    (x.status || "").toLowerCase().includes("progress")
-  );
-
-  let ws = XLSX.utils.aoa_to_sheet([]);
-
-  let maxMaterial = 6;
-  let colWidth = 4;
-
-  filtered.forEach((x, index) => {
-
-    let col = index * colWidth;
-
-    let materials = (x.material || [])
-      .map(m => {
-
-        let name = "";
-        let qty = 0;
-
-        if (Array.isArray(m)) {
-          name = m[0] || "";
-          qty = Number(m[1]) || 0;
-        } else {
-          name = m.name || m.nama || "";
-          qty = Number(m.qty) || 0;
-        }
-
-        return qty > 0 ? { name, qty } : null;
-      })
-      .filter(Boolean);
-
-    XLSX.utils.sheet_add_aoa(ws, [[x.spk || ""]], { origin: { r: 0, c: col } });
-    XLSX.utils.sheet_add_aoa(ws, [[x.project || ""]], { origin: { r: 1, c: col } });
-    XLSX.utils.sheet_add_aoa(ws, [[x.tanggal || ""]], { origin: { r: 2, c: col } });
-
-    XLSX.utils.sheet_add_aoa(ws, [["Material","Qty"]], {
-      origin: { r: 4, c: col }
-    });
-
-    for (let i = 0; i < maxMaterial; i++) {
-      let mat = materials[i];
-
-      XLSX.utils.sheet_add_aoa(ws, [[
-        mat ? mat.name : "",
-        mat ? mat.qty : "-"
-      ]], {
-        origin: { r: 5 + i, c: col }
-      });
-    }
-
+if(search){
+  search.addEventListener("input",function(){
+    loadTable(this.value);
   });
+}
 
-  let wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Tickets");
-
-  XLSX.writeFile(wb, "Ticket_Form.xlsx");
-
-  alert("✔ Export berhasil!");
+/* =========================
+   OPEN MATERIAL
+========================= */
+window.openMaterialById = function(id){
+  localStorage.setItem("activeTicketId",id);
+  window.location.href = "material/material.html";
 };
 
 /* =========================
-   IMPORT EXCEL (SERVER SYNC)
+   EDIT
 ========================= */
-window.uploadExcel = function () {
+window.editTicketById = function(id){
 
-  const file = document.getElementById("excelUpload")?.files?.[0];
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
 
-  if (!file) {
-    alert("Pilih file Excel!");
-    return;
-  }
+  let x = tickets[idx];
 
-  const reader = new FileReader();
+  x.customer = prompt("Customer",x.customer) || x.customer;
+  x.project  = prompt("Project",x.project) || x.project;
+  x.spk      = prompt("SPK",x.spk) || x.spk;
+  x.city     = prompt("City",x.city) || x.city;
 
-  reader.onload = async function (e) {
+  localStorage.setItem("tickets", JSON.stringify(tickets));
 
-    const wb = XLSX.read(new Uint8Array(e.target.result), { type: "array" });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(sheet);
-
-    let oldData = await getData();
-
-    let newData = json.map((row, i) => ({
-
-      id: Date.now() + i,
-
-      spk: row["Reference Code"] || "",
-      tanggal: row["Wo End"] || "",
-      customer: row["Customer"] || "",
-      project: row["End Customer"] || "",
-      type: row["Job Name"] || "",
-      city: row["City"] || "",
-
-      status: "Open",
-      note: "",
-      material: []
-
-    }));
-
-    await window.syncEngine.saveAll([...oldData, ...newData]);
-
-    alert("✔ Import Excel sukses!");
-
-    loadSummary();
-    loadTable();
-
-  };
-
-  reader.readAsArrayBuffer(file);
-};
-
-/* =========================
-   EDIT / DELETE
-========================= */
-window.openEdit = async function(id){
-
-  let t = (await getData()).find(x => x.id === id);
-  if(!t) return;
-
-  editId = id;
-
-  eCustomer.value = t.customer;
-  eProject.value = t.project;
-  eSPK.value = t.spk;
-  eCity.value = t.city;
-
-  editPopup.style.display = "flex";
-};
-
-window.saveEdit = function(){
-
- window.syncEngine.updateTicket(editId, t => ({
- ...t,
- customer:eCustomer.value,
- project:eProject.value,
- spk:eSPK.value,
- city:eCity.value
-}));
-
-  editPopup.style.display = "none";
-};
-
-window.hapusTicketById = function(id){
-  window.syncEngine.deleteTicket(id);
-};
-
-/* =========================
-   INIT SAFE
-========================= */
-(async function init(){
-  await loadSummary();
-  await loadTable();
-})();
-
-/* =========================
-   AUTO REFRESH
-========================= */
-window.addEventListener("ticketsUpdated", e=>{
   loadSummary();
-  renderTable(e.detail || []);
+  loadTable(search ? search.value : "");
+};
+
+/* =========================
+   DELETE
+========================= */
+window.hapusTicketById = function(id){
+
+  if(!confirm("Hapus ticket ini?")) return;
+
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
+
+  tickets.splice(idx,1);
+
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  loadSummary();
+  loadTable(search ? search.value : "");
+};
+
+/* =========================
+   INIT
+========================= */
+window.addEventListener("ticketsUpdated",function(){
+  loadSummary();
+  loadTable(search ? search.value : "");
+});
+
+loadSummary();
+loadTable();
+
 });

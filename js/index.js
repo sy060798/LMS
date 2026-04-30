@@ -76,10 +76,10 @@ function loadTable(filter = "") {
 
   let k = filter.toLowerCase().trim();
 
-  // kalau kosong → tampil semua data
+  // kalau kosong → tampil semua
   if (!k) return true;
 
-  // hanya SPK yang dicari
+  // hanya SPK
   return (x.spk || "").toLowerCase().includes(k);
 
 });

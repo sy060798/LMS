@@ -14,12 +14,10 @@ if(!form) return;
 if(typeEl) typeEl.value = "Activation";
 
 /* =========================
-   SUBMIT
+   SUBMIT → SERVER ONLY
 ========================= */
 form.addEventListener("submit", function(e){
     e.preventDefault();
-
-    let data = JSON.parse(localStorage.getItem("tickets") || "[]");
 
     const spk = document.getElementById("spk")?.value.trim();
 
@@ -27,6 +25,8 @@ form.addEventListener("submit", function(e){
         alert("SPK wajib diisi!");
         return;
     }
+
+    const data = window.syncEngine?.DB?.getTickets?.() || [];
 
     const spkClean = spk.toLowerCase();
 
@@ -62,13 +62,17 @@ form.addEventListener("submit", function(e){
         created: new Date().toISOString()
     };
 
-    data.push(ticket);
+    /* =========================
+       PUSH VIA SYNC ENGINE (SERVER)
+    ========================= */
+    window.syncEngine.updateTicket(ticket.id, () => ticket);
+    window.syncEngine.saveAll();
 
-    localStorage.setItem("tickets", JSON.stringify(data));
-    localStorage.setItem("activeTicketId", ticket.id);
-
+    /* =========================
+       UI FEEDBACK
+    ========================= */
     if(msg){
-        msg.innerHTML = "✔ Ticket berhasil disimpan";
+        msg.innerHTML = "✔ Ticket berhasil dikirim ke server";
         msg.style.color = "green";
     }
 
@@ -76,6 +80,9 @@ form.addEventListener("submit", function(e){
 
     if(statusEl) statusEl.value = "Open";
     if(typeEl) typeEl.value = "Activation";
+
+    /* refresh dashboard */
+    window.dispatchEvent(new Event("ticketsUpdated"));
 });
 
 });

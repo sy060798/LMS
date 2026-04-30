@@ -1,67 +1,30 @@
-(function () {
+document.addEventListener("DOMContentLoaded", function () {
 
 const SERVER_URL =
 window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   MEMORY STATE (NO LOCAL STORAGE)
+   ELEMENT
 ========================= */
-let isEditing = {
-  note: {},
-  status: {}
-};
-
-let autoRefreshInterval = null;
+const body   = document.getElementById("ticketBody");
+const search = document.getElementById("searchCustomer");
 
 /* =========================
-   TOAST
+   DATA MEMORY ONLY
 ========================= */
-function showToast(msg, type = "success") {
-
-  const toast = document.createElement("div");
-  toast.textContent = msg;
-
-  Object.assign(toast.style, {
-    position: "fixed",
-    bottom: "20px",
-    right: "20px",
-    padding: "12px 16px",
-    borderRadius: "10px",
-    color: "#fff",
-    fontSize: "14px",
-    zIndex: "99999",
-    boxShadow: "0 8px 20px rgba(0,0,0,.18)",
-    transition: "opacity .3s",
-    background:
-      type === "success" ? "#28a745" :
-      type === "error" ? "#dc3545" : "#333"
-  });
-
-  document.body.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    setTimeout(() => toast.remove(), 300);
-  }, 2000);
-}
+let data = [];
 
 /* =========================
-   LOAD DATA (SERVER ONLY)
+   LOAD SERVER ONLY
 ========================= */
-async function loadAll() {
-
+async function getServerData() {
   try {
-
     const res = await fetch(`${SERVER_URL}/tickets`);
-    const data = await res.json();
+    const json = await res.json();
 
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(json)) return [];
 
-    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
-      detail: data
-    }));
-
-    return data;
+    return json;
 
   } catch (err) {
     console.log("LOAD ERROR:", err);
@@ -70,178 +33,79 @@ async function loadAll() {
 }
 
 /* =========================
-   SAVE DATA (SERVER ONLY)
+   RENDER TABLE
 ========================= */
-async function saveAll(data) {
+function renderTable(list = data) {
 
-  try {
+  if (!body) return;
 
-    await fetch(`${SERVER_URL}/tickets/bulk-save`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
+  body.innerHTML = "";
 
-    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
-      detail: data
-    }));
-
-    showToast("✅ Saved to server");
-
-  } catch (err) {
-    console.log("SAVE ERROR:", err);
-    showToast("❌ Save gagal", "error");
+  if (!list.length) {
+    body.innerHTML = `
+      <tr>
+        <td colspan="20" style="text-align:center;padding:20px;color:#888">
+          Tidak ada data
+        </td>
+      </tr>
+    `;
+    return;
   }
-}
 
-/* =========================
-   UPDATE TICKET (SERVER SAFE)
-========================= */
-async function updateTicket(id, callback) {
+  list.forEach((item, i) => {
 
-  const data = await loadAll();
+    const tr = document.createElement("tr");
 
-  if (!Array.isArray(data)) return;
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${item.customer || ""}</td>
+      <td>${item.project || ""}</td>
+      <td>${item.spk || ""}</td>
+      <td>${item.type || ""}</td>
+      <td>${item.qty || ""}</td>
+      <td>${item.deadline || ""}</td>
+      <td>${item.status || ""}</td>
+      <td>${item.note || ""}</td>
+    `;
 
-  const index = data.findIndex(t => t.id === id);
-  if (index === -1) return;
-
-  data[index] = callback({ ...data[index] });
-
-  await saveAll(data);
-}
-
-/* =========================
-   DELETE
-========================= */
-async function deleteTicket(id) {
-
-  const data = await loadAll();
-
-  const filtered = (Array.isArray(data) ? data : [])
-    .filter(t => t.id !== id);
-
-  await saveAll(filtered);
-}
-
-/* =========================
-   NOTE (SAFE SERVER UPDATE)
-========================= */
-async function updateNote(id, note) {
-
-  isEditing.note[id] = true;
-
-  await updateTicket(id, t => ({
-    ...t,
-    note
-  }));
-
-  isEditing.note[id] = false;
-}
-
-/* =========================
-   STATUS (SAFE SERVER UPDATE)
-========================= */
-async function updateStatus(id, status) {
-
-  isEditing.status[id] = true;
-
-  await updateTicket(id, t => ({
-    ...t,
-    status
-  }));
-
-  isEditing.status[id] = false;
-}
-
-/* =========================
-   MATERIAL
-========================= */
-async function updateMaterial(id, material) {
-
-  return updateTicket(id, t => ({
-    ...t,
-    material
-  }));
-}
-
-/* =========================
-   BIND INPUT (OPTIONAL SAFE MODE)
-========================= */
-function bindNoteInput(id, input) {
-
-  input.addEventListener("focus", () => {
-    isEditing.note[id] = true;
-  });
-
-  input.addEventListener("blur", async () => {
-    isEditing.note[id] = false;
-    await updateNote(id, input.value);
-  });
-}
-
-function bindStatusSelect(id, select) {
-
-  select.addEventListener("focus", () => {
-    isEditing.status[id] = true;
-  });
-
-  select.addEventListener("change", async () => {
-    await updateStatus(id, select.value);
-    isEditing.status[id] = false;
+    body.appendChild(tr);
   });
 }
 
 /* =========================
-   SMART AUTO REFRESH
+   LOAD + REFRESH
 ========================= */
-function startAutoRefresh() {
-
-  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-
-  autoRefreshInterval = setInterval(async () => {
-
-    const editingNow =
-      Object.values(isEditing.note).includes(true) ||
-      Object.values(isEditing.status).includes(true);
-
-    if (editingNow) {
-      console.log("⏸ skip refresh (user sedang edit)");
-      return;
-    }
-
-    const data = await loadAll();
-
-    window.dispatchEvent(new CustomEvent("ticketsUpdated", {
-      detail: data
-    }));
-
-  }, 5000); // stabil 5 detik (lebih aman dari 3 detik)
+async function refreshData() {
+  data = await getServerData();
+  renderTable(data);
 }
+
+/* =========================
+   SEARCH
+========================= */
+if (search) {
+  search.addEventListener("input", function () {
+
+    const key = this.value.toLowerCase();
+
+    const filtered = data.filter(x =>
+      (x.customer || "").toLowerCase().includes(key) ||
+      (x.project || "").toLowerCase().includes(key) ||
+      (x.spk || "").toLowerCase().includes(key)
+    );
+
+    renderTable(filtered);
+  });
+}
+
+/* =========================
+   AUTO REFRESH SERVER
+========================= */
+setInterval(refreshData, 5000);
 
 /* =========================
    INIT
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  startAutoRefresh();
+refreshData();
+
 });
-
-/* =========================
-   PUBLIC API (SERVER ONLY)
-========================= */
-window.syncEngine = {
-
-  loadAll,
-  saveAll,
-  updateTicket,
-  deleteTicket,
-  updateNote,
-  updateStatus,
-  updateMaterial,
-
-  bindNoteInput,
-  bindStatusSelect
-
-};
-
-})();

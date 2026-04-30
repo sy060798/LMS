@@ -12,11 +12,11 @@ const search = document.getElementById("searchCustomer");
    AMBIL DATA DARI SYNC ENGINE
 ========================= */
 function getData(){
-  return window.DB?.getTickets?.() || window.data || [];
+  return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   RENDER SUMMARY
+   SUMMARY
 ========================= */
 function loadSummary(){
 
@@ -38,7 +38,7 @@ function loadSummary(){
 }
 
 /* =========================
-   RENDER TABLE
+   TABLE RENDER
 ========================= */
 function loadTable(filter=""){
 
@@ -55,12 +55,12 @@ function loadTable(filter=""){
 
   if(!body) return;
 
-  body.innerHTML = rows.slice(-50).reverse().map((x,i)=>{
+  body.innerHTML = rows.slice(-50).reverse().map((x)=>{
 
     return `
     <tr>
 
-      <td>${x.no ?? "-"}</td>
+      <td>${x.spk || "-"}</td>
       <td>${x.customer || ""}</td>
       <td>${x.project || ""}</td>
       <td>${x.spk || ""}</td>
@@ -86,11 +86,9 @@ function loadTable(filter=""){
 
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
-
           <button onclick="openMaterialById('${x.id}')">📦</button>
           <button onclick="editTicketById('${x.id}')">✏️</button>
           <button onclick="hapusTicketById('${x.id}')">🗑️</button>
-
         </div>
       </td>
 
@@ -100,22 +98,28 @@ function loadTable(filter=""){
 }
 
 /* =========================
-   GLOBAL FUNCTIONS
+   NOTE (LOCAL SYNC)
 ========================= */
 window.updateNote = function(id,val){
-  window.FS?.saveAll?.(); // optional sync
-};
 
-window.updateStatus = function(id,val){
-
-  fetch(`${window.SERVER_URL}/tickets/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status: val })
-  }).then(() => {
-    window.syncEngine?.loadData?.();
+  window.syncEngine.updateTicket(id, t => {
+    t.note = val;
+    return t;
   });
 
+};
+
+/* =========================
+   STATUS (SYNC FIX)
+========================= */
+window.updateStatus = function(id,val){
+
+  window.syncEngine.updateTicket(id, t => {
+    t.status = val;
+    return t;
+  });
+
+  window.syncEngine.saveAll();
 };
 
 /* =========================
@@ -136,9 +140,9 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT
+   EDIT (FULL FIX)
 ========================= */
-window.editTicketById = async function(id){
+window.editTicketById = function(id){
 
   let data = getData();
   let x = data.find(t => t.id == id);
@@ -149,7 +153,7 @@ window.editTicketById = async function(id){
   let spk      = prompt("SPK", x.spk);
   let city     = prompt("City", x.city);
 
-  if(!spk) return alert("SPK tidak boleh kosong");
+  if(!spk) return alert("SPK wajib");
 
   let duplicate = data.some(t =>
     t.id !== id && (t.spk || "").toLowerCase() === spk.toLowerCase()
@@ -160,36 +164,30 @@ window.editTicketById = async function(id){
     return;
   }
 
-  await fetch(`${window.SERVER_URL}/tickets/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      customer: customer || x.customer,
-      project: project || x.project,
-      spk,
-      city: city || x.city
-    })
+  window.syncEngine.updateTicket(id, t => {
+    t.customer = customer || t.customer;
+    t.project = project || t.project;
+    t.spk = spk;
+    t.city = city || t.city;
+    return t;
   });
 
-  window.syncEngine?.loadData?.();
+  window.syncEngine.saveAll();
 };
 
 /* =========================
-   DELETE
+   DELETE (FIX 100%)
 ========================= */
-window.hapusTicketById = async function(id){
+window.hapusTicketById = function(id){
 
   if(!confirm("Hapus ticket ini?")) return;
 
-  await fetch(`${window.SERVER_URL}/tickets/${id}`, {
-    method: "DELETE"
-  });
-
-  window.syncEngine?.loadData?.();
+  window.syncEngine.deleteTicket(id);
+  window.syncEngine.saveAll();
 };
 
 /* =========================
-   LISTEN SYNC
+   SYNC LISTENER
 ========================= */
 window.addEventListener("ticketsUpdated", () => {
   loadSummary();

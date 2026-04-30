@@ -35,7 +35,7 @@ function showToast(msg, type = "success") {
 }
 
 /* =========================
-   LOCAL CACHE
+   LOCAL DB (SOURCE OF TRUTH)
 ========================= */
 const DB = {
 
@@ -47,68 +47,40 @@ const DB = {
     localStorage.setItem("tickets", JSON.stringify(data));
   },
 
-  getActiveSpk(){
-    return localStorage.getItem("activeTicketId");
+  update(mutator){
+
+    let data = this.getTickets();
+    data = mutator(data);
+    this.saveTickets(data);
+
+    return data;
   }
 
 };
 
 /* =========================
-   ACTIVE TICKET
+   LOCK SYSTEM (ANTI DOUBLE SYNC)
 ========================= */
-function getActiveTicket(){
-
-  let id = DB.getActiveSpk();
-  if(!id) return null;
-
-  let tickets = DB.getTickets();
-  return tickets.find(x => x.id == id) || null;
-}
+let isSyncing = false;
 
 /* =========================
-   CLEAN DATA
-========================= */
-function cleanBeforeSave(tickets){
-
-  return tickets.map(t => {
-
-    let x = { ...t };
-
-    if(Array.isArray(x.material)){
-      x.material = x.material
-        .filter(m => Number(m.qty) > 0)
-        .map(m => ({
-          nama: m.nama || "",
-          satuan: m.satuan || "",
-          harga: Number(m.harga || 0),
-          qty: Number(m.qty || 0)
-        }));
-    }
-
-    return x;
-  });
-}
-
-/* =========================
-   LOAD SERVER (SOURCE OF TRUTH)
+   LOAD FROM SERVER
 ========================= */
 async function loadAll(){
 
+  if(isSyncing) return;
+
   try{
 
-    let res = await fetch(SERVER_URL + "/api/get?type=LMS&_=" + Date.now());
+    isSyncing = true;
 
-    if(!res.ok){
-      showToast("❌ Gagal ambil data server", "error");
-      return [];
-    }
+    const res = await fetch(`${SERVER_URL}/api/get?type=LMS&_=${Date.now()}`);
 
-    let data = await res.json();
+    if(!res.ok) return [];
 
-    if(!Array.isArray(data)){
-      showToast("❌ Data server rusak", "error");
-      return [];
-    }
+    const data = await res.json();
+
+    if(!Array.isArray(data)) return [];
 
     DB.saveTickets(data);
 
@@ -119,9 +91,10 @@ async function loadAll(){
     return data;
 
   }catch(err){
-    console.log(err);
-    showToast("❌ Load gagal", "error");
+    console.log("LOAD ERROR:", err);
     return [];
+  }finally{
+    isSyncing = false;
   }
 }
 
@@ -132,67 +105,113 @@ async function saveAll(){
 
   try{
 
-    let tickets = DB.getTickets();
-    let cleaned = cleanBeforeSave(tickets);
+    const data = DB.getTickets();
 
-    let res = await fetch(SERVER_URL + "/api/save", {
+    await fetch(`${SERVER_URL}/api/save`, {
       method: "POST",
-      headers:{
-        "Content-Type":"application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         type: "LMS",
-        data: cleaned
+        data
       })
     });
 
-    if(!res.ok){
-      showToast("❌ Gagal save server", "error");
-      return;
-    }
-
     await loadAll();
 
-    showToast("✔ Data berhasil disimpan", "success");
-
   }catch(err){
-    console.log(err);
+    console.log("SAVE ERROR:", err);
     showToast("❌ Save gagal", "error");
   }
 }
 
 /* =========================
-   REFRESH
+   UPDATE SINGLE TICKET (ANTI BENTROK CORE)
 ========================= */
-async function refreshNow(){
-  await loadAll();
-  showToast("✔ Data berhasil di refresh", "success");
+function updateTicket(id, callback){
+
+  DB.update(data => {
+
+    const i = data.findIndex(t => t.id === id);
+
+    if(i !== -1){
+      data[i] = callback(data[i]);
+    }
+
+    return data;
+  });
 }
 
 /* =========================
-   GLOBAL EXPORT
+   DELETE SAFE (FIX BALIK DATA)
 ========================= */
-window.saveNow = saveAll;
-window.loadNow = refreshNow;
+function deleteTicket(id){
 
-window.FS = {
+  DB.update(data => data.filter(t => t.id !== id));
+}
+
+/* =========================
+   MATERIAL UPDATE SAFE
+========================= */
+function updateMaterial(id, material){
+
+  updateTicket(id, t => {
+    t.material = material;
+    return t;
+  });
+}
+
+/* =========================
+   NOTE UPDATE SAFE
+========================= */
+function updateNote(id, note){
+
+  updateTicket(id, t => {
+    t.note = note;
+    return t;
+  });
+}
+
+/* =========================
+   STATUS UPDATE SAFE
+========================= */
+function updateStatus(id, status){
+
+  updateTicket(id, t => {
+    t.status = status;
+    return t;
+  });
+}
+
+/* =========================
+   PUBLIC API
+========================= */
+window.syncEngine = {
+
   DB,
-  getActiveTicket,
+
+  loadAll,
   saveAll,
-  loadAll
+
+  updateTicket,
+  deleteTicket,
+  updateMaterial,
+  updateNote,
+  updateStatus,
+
+  get isSyncing(){
+    return isSyncing;
+  }
 };
 
 /* =========================
-   EXPOSE GLOBAL (WAJIB)
+   GLOBAL EXPOSE (OPTIONAL LEGACY)
 ========================= */
 window.DB = DB;
 window.SERVER_URL = SERVER_URL;
 
 /* =========================
-   INIT
+   AUTO LOAD
 ========================= */
-document.addEventListener("DOMContentLoaded", async () => {
-  await loadAll();
-});
+document.addEventListener("DOMContentLoaded", loadAll);
 
 })();

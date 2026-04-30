@@ -314,12 +314,13 @@ window.openEdit = async function(id){
 
 window.saveEdit = function(){
 
-  window.syncEngine.updateTicket(editId, {
-    customer: eCustomer.value,
-    project: eProject.value,
-    spk: eSPK.value,
-    city: eCity.value
-  });
+ window.syncEngine.updateTicket(editId, t => ({
+ ...t,
+ customer:eCustomer.value,
+ project:eProject.value,
+ spk:eSPK.value,
+ city:eCity.value
+}));
 
   editPopup.style.display = "none";
 };
@@ -339,9 +340,7 @@ window.hapusTicketById = function(id){
 /* =========================
    AUTO REFRESH
 ========================= */
-setInterval(() => {
+window.addEventListener("ticketsUpdated", e=>{
   loadSummary();
-  loadTable();
-}, 4000);
-
+  renderTable(e.detail || []);
 });

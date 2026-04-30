@@ -157,8 +157,6 @@ button{
 
 <div class="grid">
 
-<!-- ❌ NO SUDAH DIHAPUS -->
-
 <div class="form-group">
 <label>Customer</label>
 <input type="text" id="customer" required>
@@ -172,6 +170,15 @@ button{
 <div class="form-group">
 <label>No SPK</label>
 <input type="text" id="spk" required>
+</div>
+
+<!-- 🔥 TYPE TAMBAHAN -->
+<div class="form-group">
+<label>Type</label>
+<select id="type" required>
+<option value="Activation">Activation</option>
+<option value="Troubleshoot">Troubleshoot</option>
+</select>
 </div>
 
 <div class="form-group">
@@ -227,7 +234,6 @@ form.addEventListener("submit", function(e){
         return;
     }
 
-    // CEK DUPLIKAT SPK
     if(data.some(t => t.spk === spk)){
         alert("SPK sudah digunakan!");
         return;
@@ -238,11 +244,14 @@ form.addEventListener("submit", function(e){
         customer: document.getElementById("customer").value,
         project: document.getElementById("project").value,
         spk: spk,
+
+        type: document.getElementById("type").value, // 🔥 TYPE MASUK SINI
+
         tanggal: document.getElementById("tanggal").value,
         city: document.getElementById("city").value,
         status: document.getElementById("status").value,
         ket: document.getElementById("ket").value,
-        type: "Activation",
+
         note: "",
         material: [],
         created: new Date().toISOString()

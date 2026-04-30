@@ -2,13 +2,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
 const form = document.getElementById("ticketForm");
 const msg  = document.getElementById("msg");
-const type = document.getElementById("type");
 
-if(type){
-    type.innerHTML = `
-        <option value="Activation">Activation</option>
-        <option value="TroubleShooting">TroubleShooting</option>
+/* =========================
+   BUAT FIELD TYPE OTOMATIS
+========================= */
+const statusBox = document.getElementById("status");
+
+if(statusBox){
+
+    const wrap = document.createElement("div");
+    wrap.innerHTML = `
+        <label style="display:block;margin-bottom:6px;font-size:12px;font-weight:600;">Type</label>
+        <select id="type" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
+            <option value="Activation">Activation</option>
+            <option value="TroubleShooting">TroubleShooting</option>
+        </select>
     `;
+
+    statusBox.parentNode.after(wrap);
 }
 
 if(!form) return;

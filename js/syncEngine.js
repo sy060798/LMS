@@ -1,78 +1,223 @@
-document.addEventListener("DOMContentLoaded", async function () {
+(function () {
 
-const body = document.getElementById("ticketBody");
+const SERVER_URL =
+window.SERVER_URL ||
+"https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   PAKSA AMBIL DATA SERVER
+   CACHE ONLY
 ========================= */
-async function paksaLoad(){
+const DB = {
 
-  try{
+  getTickets() {
+    try {
+      return JSON.parse(
+        localStorage.getItem("tickets") || "[]"
+      );
+    } catch {
+      return [];
+    }
+  },
 
-    const data = await window.syncEngine.loadAll();
+  saveTickets(data) {
+    localStorage.setItem(
+      "tickets",
+      JSON.stringify(data || [])
+    );
+  },
 
-    if(!Array.isArray(data)){
-      render([]);
-      return;
+  getActiveSpk() {
+    return localStorage.getItem("activeTicketId");
+  }
+
+};
+
+/* =========================
+   ACTIVE TICKET
+========================= */
+function getActiveTicket() {
+  return DB.getTickets().find(
+    x => String(x.id) === String(DB.getActiveSpk())
+  );
+}
+
+/* =========================
+   LOAD = SERVER PRIORITY
+========================= */
+async function loadAll() {
+
+  try {
+
+    const res = await fetch(
+      SERVER_URL + "/api/get?type=LMS&t=" + Date.now()
+    );
+
+    const serverData = await res.json();
+
+    if (!Array.isArray(serverData)) {
+      return [];
     }
 
-    render(data);
-    summary(data);
+    DB.saveTickets(serverData);
 
-  }catch(err){
+    window.dispatchEvent(
+      new CustomEvent("ticketsUpdated", {
+        detail: serverData
+      })
+    );
 
-    console.log(err);
-    render([]);
+    return serverData;
 
+  } catch (err) {
+
+    console.log("LOAD ERROR:", err);
+
+    return DB.getTickets();
   }
 }
 
 /* =========================
-   TABLE
+   SAVE = SERVER MAIN
 ========================= */
-function render(rows){
+async function saveAll(data = null) {
 
-  if(!body) return;
+  try {
 
-  body.innerHTML = rows.map((x,i)=>`
-    <tr>
-      <td>${i+1}</td>
-      <td>${x.customer || ""}</td>
-      <td>${x.project || ""}</td>
-      <td>${x.spk || ""}</td>
-      <td>${x.type || ""}</td>
-      <td>${x.tanggal || ""}</td>
-      <td>${x.city || ""}</td>
-      <td>${x.status || ""}</td>
-      <td>${x.note || ""}</td>
-    </tr>
-  `).join("");
+    const rows = Array.isArray(data)
+      ? data
+      : DB.getTickets();
+
+    await fetch(
+      SERVER_URL + "/api/save",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({
+          type: "LMS",
+          data: rows
+        })
+      }
+    );
+
+    DB.saveTickets(rows);
+
+    window.dispatchEvent(
+      new CustomEvent("ticketsUpdated", {
+        detail: rows
+      })
+    );
+
+    return rows;
+
+  } catch (err) {
+
+    console.log("SAVE ERROR:", err);
+
+    return [];
+  }
 }
 
 /* =========================
-   SUMMARY
+   UPDATE ONE ROW
 ========================= */
-function summary(data){
+async function updateTicket(id, updater) {
 
-  const tot      = document.getElementById("totTicket");
-  const open     = document.getElementById("openTicket");
-  const progress = document.getElementById("progressTicket");
-  const close    = document.getElementById("closeTicket");
-  const pending  = document.getElementById("pendingTicket");
+  let rows = await loadAll();
 
-  if(tot) tot.textContent = data.length;
-  if(open) open.textContent = data.filter(x=>x.status=="Open").length;
-  if(progress) progress.textContent = data.filter(x=>x.status=="Progress").length;
-  if(close) close.textContent = data.filter(x=>x.status=="Close").length;
-  if(pending) pending.textContent = data.filter(x=>x.status=="Pending").length;
+  let index = rows.findIndex(
+    x => String(x.id) === String(id)
+  );
+
+  if (index === -1) return;
+
+  if (typeof updater === "function") {
+    rows[index] = updater({
+      ...rows[index]
+    });
+  } else {
+    rows[index] = {
+      ...rows[index],
+      ...updater
+    };
+  }
+
+  await saveAll(rows);
 }
+
+/* =========================
+   DELETE
+========================= */
+async function deleteTicket(id) {
+
+  let rows = await loadAll();
+
+  rows = rows.filter(
+    x => String(x.id) !== String(id)
+  );
+
+  await saveAll(rows);
+}
+
+/* =========================
+   NOTE
+========================= */
+async function updateNote(id, note) {
+  await updateTicket(id, {
+    note: note
+  });
+}
+
+/* =========================
+   STATUS
+========================= */
+async function updateStatus(id, status) {
+  await updateTicket(id, {
+    status: status
+  });
+}
+
+/* =========================
+   MATERIAL
+========================= */
+async function updateMaterial(id, material) {
+  await updateTicket(id, {
+    material: material
+  });
+}
+
+/* =========================
+   AUTO REFRESH SERVER
+========================= */
+setInterval(loadAll, 5000);
 
 /* =========================
    INIT
 ========================= */
-await paksaLoad();
+document.addEventListener(
+  "DOMContentLoaded",
+  loadAll
+);
 
-/* refresh paksa */
-setInterval(paksaLoad,5000);
+/* =========================
+   GLOBAL API
+========================= */
+window.syncEngine = {
 
-});
+  DB,
+  getActiveTicket,
+
+  loadAll,
+  saveAll,
+
+  updateTicket,
+  deleteTicket,
+
+  updateNote,
+  updateStatus,
+  updateMaterial
+
+};
+
+})();

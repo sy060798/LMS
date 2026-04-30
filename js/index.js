@@ -1,10 +1,12 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-const SERVER_URL =
-window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
-
 let data = [];
 let noteTimer = {};
+
+/* =========================
+   SERVER
+========================= */
+const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
    ELEMENT
@@ -13,23 +15,18 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   LOAD FROM SERVER
+   FETCH DATA SERVER
 ========================= */
 async function loadData(){
-
-  try{
-
-    let res = await fetch(SERVER_URL + "/api/get?type=LMS&_=" + Date.now());
-
-    let json = await res.json();
-
-    data = Array.isArray(json) ? json : [];
+  try {
+    const res = await fetch(`${SERVER_URL}/tickets`);
+    data = await res.json();
 
     loadSummary();
     loadTable(search ? search.value : "");
 
-  }catch(err){
-    console.log(err);
+  } catch (err) {
+    console.error("Gagal ambil data server:", err);
   }
 }
 
@@ -42,12 +39,18 @@ function saveNote(id,value){
 
   noteTimer[id] = setTimeout(async ()=>{
 
-    let ticket = data.find(x => x.id == id);
-    if(!ticket) return;
+    try {
+      await fetch(`${SERVER_URL}/tickets/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: value })
+      });
 
-    ticket.note = value;
+      loadData();
 
-    await syncToServer();
+    } catch (err) {
+      console.error("Gagal update note:", err);
+    }
 
   },500);
 }
@@ -57,38 +60,17 @@ function saveNote(id,value){
 ========================= */
 async function saveStatus(id,value){
 
-  let ticket = data.find(x => x.id == id);
-  if(!ticket) return;
-
-  ticket.status = value;
-
-  await syncToServer();
-
-  loadSummary();
-}
-
-/* =========================
-   SYNC KE SERVER (FULL REPLACE)
-========================= */
-async function syncToServer(){
-
-  try{
-
-    let res = await fetch(SERVER_URL + "/api/save", {
-      method: "POST",
-      headers: { "Content-Type":"application/json" },
-      body: JSON.stringify({
-        type: "LMS",
-        data: data
-      })
+  try {
+    await fetch(`${SERVER_URL}/tickets/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: value })
     });
 
-    if(!res.ok){
-      console.log("Gagal sync server");
-    }
+    loadData();
 
-  }catch(err){
-    console.log(err);
+  } catch (err) {
+    console.error("Gagal update status:", err);
   }
 }
 
@@ -148,6 +130,7 @@ function loadTable(filter=""){
 
       <td>
         <select onchange="updateStatus('${x.id}',this.value)">
+          <option value="">Pilih</option>
           <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
           <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
           <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
@@ -162,15 +145,22 @@ function loadTable(filter=""){
       </td>
 
       <td>
-        <button onclick="hapusTicketById('${x.id}')">🗑️</button>
+        <div style="display:flex;gap:6px;justify-content:center;">
+
+          <button onclick="openMaterialById('${x.id}')">📦</button>
+          <button onclick="editTicketById('${x.id}')">✏️</button>
+          <button onclick="hapusTicketById('${x.id}')">🗑️</button>
+
+        </div>
       </td>
 
-    </tr>`;
+    </tr>
+    `;
   }).join("");
 }
 
 /* =========================
-   GLOBAL FUNCTION
+   GLOBAL
 ========================= */
 window.updateNote = function(id,val){
   saveNote(id,val);
@@ -181,21 +171,6 @@ window.updateStatus = function(id,val){
 };
 
 /* =========================
-   DELETE (SERVER)
-========================= */
-window.hapusTicketById = async function(id){
-
-  if(!confirm("Hapus ticket ini?")) return;
-
-  data = data.filter(x => x.id != id);
-
-  await syncToServer();
-
-  loadSummary();
-  loadTable(search ? search.value : "");
-};
-
-/* =========================
    SEARCH
 ========================= */
 if(search){
@@ -203,6 +178,59 @@ if(search){
     loadTable(this.value);
   });
 }
+
+/* =========================
+   MATERIAL
+========================= */
+window.openMaterialById = function(id){
+  localStorage.setItem("activeTicketId",id);
+  window.location.href = "material/material.html";
+};
+
+/* =========================
+   EDIT (SERVER PATCH)
+========================= */
+window.saveEditTicket = async function(id){
+
+  try {
+    await fetch(`${SERVER_URL}/tickets/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        customer: e_customer.value,
+        project: e_project.value,
+        spk: e_spk.value,
+        city: e_city.value,
+        type: e_type.value
+      })
+    });
+
+    document.getElementById("editPopup").remove();
+    loadData();
+
+  } catch (err) {
+    console.error("Gagal edit:", err);
+  }
+};
+
+/* =========================
+   DELETE (SERVER)
+========================= */
+window.hapusTicketById = async function(id){
+
+  if(!confirm("Hapus ticket ini?")) return;
+
+  try {
+    await fetch(`${SERVER_URL}/tickets/${id}`, {
+      method: "DELETE"
+    });
+
+    loadData();
+
+  } catch (err) {
+    console.error("Gagal hapus:", err);
+  }
+};
 
 /* =========================
    INIT

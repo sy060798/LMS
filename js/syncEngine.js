@@ -8,7 +8,7 @@ window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 ========================= */
 function showToast(msg, type = "success") {
 
-  let toast = document.createElement("div");
+  const toast = document.createElement("div");
   toast.textContent = msg;
 
   toast.style.position = "fixed";
@@ -20,62 +20,30 @@ function showToast(msg, type = "success") {
   toast.style.fontSize = "14px";
   toast.style.zIndex = "99999";
   toast.style.boxShadow = "0 8px 20px rgba(0,0,0,.18)";
-  toast.style.transition = "0.3s";
 
-  if(type === "success") toast.style.background = "#28a745";
-  else if(type === "error") toast.style.background = "#dc3545";
-  else toast.style.background = "#333";
+  toast.style.background =
+    type === "success" ? "#28a745" :
+    type === "error" ? "#dc3545" : "#333";
 
   document.body.appendChild(toast);
 
   setTimeout(() => {
     toast.style.opacity = "0";
     setTimeout(() => toast.remove(), 300);
-  }, 2500);
+  }, 2000);
 }
 
 /* =========================
-   LOCAL DB (CACHE ONLY)
+   LOAD DATA (SERVER ONLY)
 ========================= */
-const DB = {
+async function loadAll() {
 
-  getTickets(){
-    return JSON.parse(localStorage.getItem("tickets") || "[]");
-  },
-
-  saveTickets(data){
-    localStorage.setItem("tickets", JSON.stringify(data));
-  }
-
-};
-
-/* =========================
-   STATE CONTROL
-========================= */
-let isSyncing = false;
-let saveTimer = null;
-let autoRefreshTimer = null;
-
-/* =========================
-   LOAD FROM SERVER
-========================= */
-async function loadAll(){
-
-  if(isSyncing) return;
-
-  isSyncing = true;
-
-  try{
+  try {
 
     const res = await fetch(`${SERVER_URL}/tickets`);
     const data = await res.json();
 
-    if(!Array.isArray(data)){
-      console.log("DATA INVALID");
-      return [];
-    }
-
-    DB.saveTickets(data);
+    if (!Array.isArray(data)) return [];
 
     window.dispatchEvent(new CustomEvent("ticketsUpdated", {
       detail: data
@@ -83,118 +51,80 @@ async function loadAll(){
 
     return data;
 
-  }catch(err){
+  } catch (err) {
     console.log("LOAD ERROR:", err);
     return [];
-  }finally{
-    isSyncing = false;
   }
 }
 
 /* =========================
-   AUTO REFRESH 10 MENIT
+   SAVE DATA (SERVER ONLY)
 ========================= */
-function startAutoRefresh(){
+async function saveAll(data) {
 
-  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  try {
 
-  autoRefreshTimer = setInterval(() => {
-    loadAll();
-  }, 10 * 60 * 1000);
+    await fetch(`${SERVER_URL}/tickets/bulk-save`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
 
-}
+    showToast("✅ Saved to server");
 
-/* =========================
-   FORCE BACK DASHBOARD
-========================= */
-function forceToDashboard(){
-
-  sessionStorage.setItem("forceDashboard", "1");
-  window.location.href = "../index.html";
-
-}
-
-/* =========================
-   SAVE (DEBOUNCE SAFE)
-========================= */
-function saveAll(){
-
-  clearTimeout(saveTimer);
-
-  saveTimer = setTimeout(async () => {
-
-    try{
-
-      const data = DB.getTickets();
-
-      await fetch(`${SERVER_URL}/tickets/bulk-save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
-
-      await loadAll();
-
-    }catch(err){
-      console.log("SAVE ERROR:", err);
-      showToast("❌ Save gagal", "error");
-    }
-
-  }, 500);
-
+  } catch (err) {
+    console.log("SAVE ERROR:", err);
+    showToast("❌ Save gagal", "error");
+  }
 }
 
 /* =========================
    UPDATE TICKET
 ========================= */
-function updateTicket(id, callback){
+async function updateTicket(id, callback) {
 
-  let data = DB.getTickets();
+  const data = await loadAll();
 
-  let index = data.findIndex(t => t.id === id);
+  const index = data.findIndex(t => t.id === id);
 
-  if(index === -1) return;
+  if (index === -1) return;
 
   data[index] = callback({ ...data[index] });
 
-  DB.saveTickets(data);
-
-  saveAll();
+  await saveAll(data);
 }
 
 /* =========================
-   DELETE
+   DELETE TICKET
 ========================= */
-function deleteTicket(id){
+async function deleteTicket(id) {
 
-  let data = DB.getTickets();
+  let data = await loadAll();
 
   data = data.filter(t => t.id !== id);
 
-  DB.saveTickets(data);
-
-  saveAll();
+  await saveAll(data);
 }
 
 /* =========================
    HELPERS
 ========================= */
-function updateNote(id, note){
-  updateTicket(id, t => {
+async function updateNote(id, note) {
+  return updateTicket(id, t => {
     t.note = note;
     return t;
   });
 }
 
-function updateStatus(id, status){
-  updateTicket(id, t => {
+async function updateStatus(id, status) {
+  return updateTicket(id, t => {
     t.status = status;
     return t;
   });
 }
 
-function updateMaterial(id, material){
-  updateTicket(id, t => {
+async function updateMaterial(id, material) {
+  return updateTicket(id, t => {
     t.material = material;
     return t;
   });
@@ -205,39 +135,14 @@ function updateMaterial(id, material){
 ========================= */
 window.syncEngine = {
 
-  DB,
-
   loadAll,
   saveAll,
-
   updateTicket,
   deleteTicket,
   updateNote,
   updateStatus,
-  updateMaterial,
+  updateMaterial
 
-  startAutoRefresh,
-  forceToDashboard,
-
-  get isSyncing(){
-    return isSyncing;
-  }
 };
-
-/* =========================
-   GLOBAL EXPORT
-========================= */
-window.DB = DB;
-window.SERVER_URL = SERVER_URL;
-
-/* =========================
-   AUTO LOAD + AUTO START
-========================= */
-document.addEventListener("DOMContentLoaded", function () {
-
-  loadAll();
-  startAutoRefresh();
-
-});
 
 })();

@@ -213,6 +213,73 @@ window.hapusTicketById = function(id){
   loadTable(search ? search.value : "");
 };
 
+   /* =========================
+   EXPORT EXCEL + MATERIAL FLAT
+========================= */
+window.exportExcel = function () {
+
+  let data = window.syncEngine?.DB?.getTickets?.() || [];
+
+  if (!data.length) {
+    alert("Data kosong!");
+    return;
+  }
+
+  /* =========================
+     CARI MAX MATERIAL
+  ========================= */
+  let maxMat = 0;
+
+  data.forEach(t => {
+    if (Array.isArray(t.material)) {
+      maxMat = Math.max(maxMat, t.material.length);
+    }
+  });
+
+  /* =========================
+     BUILD DATA EXPORT
+  ========================= */
+  let exportData = data.map((x, i) => {
+
+    let row = {
+      No: i + 1,
+      Customer: x.customer || "",
+      Project: x.project || "",
+      SPK: x.spk || "",
+      Type: x.type || "",
+      Tanggal: x.tanggal || "",
+      City: x.city || "",
+      Status: x.status || "",
+      Note: x.note || ""
+    };
+
+    /* =========================
+       MATERIAL COLUMN (FLAT)
+    ========================= */
+    for (let j = 0; j < maxMat; j++) {
+
+      let mat = x.material?.[j] || {};
+
+      row[`Material_${j + 1}`] = mat.name || "";
+      row[`Qty_${j + 1}`] = mat.qty || "";
+    }
+
+    return row;
+  });
+
+  /* =========================
+     EXPORT XLSX
+  ========================= */
+  let ws = XLSX.utils.json_to_sheet(exportData);
+  let wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "Tickets");
+
+  XLSX.writeFile(wb, "FS_Ticket_Material.xlsx");
+
+  alert("✔ Export berhasil");
+};
+
 /* =========================
    INIT
 ========================= */

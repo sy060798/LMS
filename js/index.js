@@ -3,75 +3,24 @@ document.addEventListener("DOMContentLoaded", function () {
 let data = [];
 
 /* =========================
-   SERVER
-========================= */
-const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
-
-/* =========================
    ELEMENT
 ========================= */
 const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   LOAD DATA
+   AMBIL DATA DARI SYNC ENGINE
 ========================= */
-async function loadData(){
-  try {
-    const res = await fetch(`${SERVER_URL}/tickets`);
-    data = await res.json();
-
-    // 🔥 SORT BIAR STABIL
-    data.sort((a,b) => new Date(a.created) - new Date(b.created));
-
-    loadSummary();
-    loadTable(search ? search.value : "");
-
-  } catch (err) {
-    console.error("Gagal load server:", err);
-  }
+function getData(){
+  return window.DB?.getTickets?.() || window.data || [];
 }
 
 /* =========================
-   SAVE NOTE
-========================= */
-async function saveNote(id,value){
-
-  try {
-    await fetch(`${SERVER_URL}/tickets/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note: value })
-    });
-
-  } catch (err) {
-    console.error("Gagal update note:", err);
-  }
-}
-
-/* =========================
-   SAVE STATUS
-========================= */
-async function saveStatus(id,value){
-
-  try {
-    await fetch(`${SERVER_URL}/tickets/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: value })
-    });
-
-    loadData();
-
-  } catch (err) {
-    console.error("Gagal update status:", err);
-  }
-}
-
-/* =========================
-   SUMMARY
+   RENDER SUMMARY
 ========================= */
 function loadSummary(){
+
+  let data = getData();
 
   const tot      = document.getElementById("totTicket");
   const open     = document.getElementById("openTicket");
@@ -89,10 +38,11 @@ function loadSummary(){
 }
 
 /* =========================
-   TABLE RENDER
+   RENDER TABLE
 ========================= */
 function loadTable(filter=""){
 
+  let data = getData();
   let k = filter.toLowerCase();
 
   let rows = data.filter(x => (
@@ -153,11 +103,19 @@ function loadTable(filter=""){
    GLOBAL FUNCTIONS
 ========================= */
 window.updateNote = function(id,val){
-  saveNote(id,val);
+  window.FS?.saveAll?.(); // optional sync
 };
 
 window.updateStatus = function(id,val){
-  saveStatus(id,val);
+
+  fetch(`${window.SERVER_URL}/tickets/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: val })
+  }).then(() => {
+    window.syncEngine?.loadData?.();
+  });
+
 };
 
 /* =========================
@@ -170,7 +128,7 @@ if(search){
 }
 
 /* =========================
-   MATERIAL PAGE
+   MATERIAL
 ========================= */
 window.openMaterialById = function(id){
   sessionStorage.setItem("activeTicketId",id);
@@ -178,10 +136,11 @@ window.openMaterialById = function(id){
 };
 
 /* =========================
-   EDIT (ANTI DUPLICATE SPK FIXED)
+   EDIT
 ========================= */
 window.editTicketById = async function(id){
 
+  let data = getData();
   let x = data.find(t => t.id == id);
   if(!x) return;
 
@@ -192,11 +151,8 @@ window.editTicketById = async function(id){
 
   if(!spk) return alert("SPK tidak boleh kosong");
 
-  let spkClean = spk.toLowerCase();
-
-  // 🔥 CEK DUPLIKAT SPK
   let duplicate = data.some(t =>
-    t.id !== id && (t.spk || "").toLowerCase() === spkClean
+    t.id !== id && (t.spk || "").toLowerCase() === spk.toLowerCase()
   );
 
   if(duplicate){
@@ -204,23 +160,18 @@ window.editTicketById = async function(id){
     return;
   }
 
-  try {
-    await fetch(`${SERVER_URL}/tickets/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        customer: customer || x.customer,
-        project: project || x.project,
-        spk: spk,
-        city: city || x.city
-      })
-    });
+  await fetch(`${window.SERVER_URL}/tickets/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customer: customer || x.customer,
+      project: project || x.project,
+      spk,
+      city: city || x.city
+    })
+  });
 
-    loadData();
-
-  } catch (err) {
-    console.error("Gagal edit:", err);
-  }
+  window.syncEngine?.loadData?.();
 };
 
 /* =========================
@@ -230,21 +181,27 @@ window.hapusTicketById = async function(id){
 
   if(!confirm("Hapus ticket ini?")) return;
 
-  try {
-    await fetch(`${SERVER_URL}/tickets/${id}`, {
-      method: "DELETE"
-    });
+  await fetch(`${window.SERVER_URL}/tickets/${id}`, {
+    method: "DELETE"
+  });
 
-    loadData();
-
-  } catch (err) {
-    console.error("Gagal hapus:", err);
-  }
+  window.syncEngine?.loadData?.();
 };
+
+/* =========================
+   LISTEN SYNC
+========================= */
+window.addEventListener("ticketsUpdated", () => {
+  loadSummary();
+  loadTable(search ? search.value : "");
+});
 
 /* =========================
    INIT
 ========================= */
-loadData();
+window.addEventListener("DOMContentLoaded", () => {
+  loadSummary();
+  loadTable();
+});
 
 });

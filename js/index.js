@@ -88,62 +88,71 @@ function loadTable(filter=""){
   const body = document.getElementById("ticketBody");
   if(!body) return;
 
-  body.innerHTML = rows.map((x, index) => `
-    <tr>
+  body.innerHTML = rows.map(x => `
+<tr>
 
-      <!-- ================= NO URUT OTOMATIS ================= -->
-      <td>${index + 1}</td>
+  <!-- NO -->
+  <td></td>
 
-      <td>${x.customer || ""}</td>
-      <td>${x.project || ""}</td>
-      <td>${x.spk || ""}</td>
-      <td>${x.tanggal || ""}</td>
-      <td>${x.city || ""}</td>
+  <!-- CUSTOMER -->
+  <td>${x.customer || ""}</td>
 
-      <!-- STATUS -->
-      <td>
-        <select onchange="updateStatus('${x.id}',this.value)">
-          <option value="">Pilih...</option>
-          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
-          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
-          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
-          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-        </select>
-      </td>
+  <!-- PROJECT -->
+  <td>${x.project || ""}</td>
 
-      <!-- NOTE -->
-      <td>
-        <input value="${x.note || ""}"
-          oninput="updateNote('${x.id}',this.value)">
-      </td>
+  <!-- SPK -->
+  <td>${x.spk || ""}</td>
 
-      <!-- AKSI -->
-      <td>
-        <div style="display:flex;gap:6px;justify-content:center;">
+  <!-- TYPE -->
+  <td>${x.type || ""}</td>
 
-          <!-- 📦 TETAP AMAN (JANGAN DIHAPUS) -->
-          <button onclick="openMaterialById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
-            📦
-          </button>
+  <!-- TANGGAL -->
+  <td>${x.tanggal || ""}</td>
 
-          <!-- EDIT -->
-          <button onclick="openEdit('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
-            ✏️
-          </button>
+  <!-- CITY -->
+  <td>${x.city || ""}</td>
 
-          <!-- DELETE -->
-          <button onclick="hapusTicketById('${x.id}')"
-            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
-            🗑️
-          </button>
+  <!-- STATUS -->
+  <td>
+    <select onchange="updateStatus('${x.id}',this.value)">
+      <option value="">Pilih...</option>
+      <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+      <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+      <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+      <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+    </select>
+  </td>
 
-        </div>
-      </td>
+  <!-- NOTE -->
+  <td>
+    <input value="${x.note || ""}"
+      oninput="updateNote('${x.id}',this.value)">
+  </td>
 
-    </tr>
-  `).join("");
+  <!-- AKSI -->
+  <td>
+    <div style="display:flex;gap:6px;justify-content:center;">
+
+      <button onclick="openMaterialById('${x.id}')"
+        style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
+        📦
+      </button>
+
+      <button onclick="openEdit('${x.id}')"
+        style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
+        ✏️
+      </button>
+
+      <button onclick="hapusTicketById('${x.id}')"
+        style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
+        🗑️
+      </button>
+
+    </div>
+  </td>
+
+</tr>
+`).join("");
 }
 
 /* =========================

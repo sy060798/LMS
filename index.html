@@ -231,6 +231,95 @@ style="width:100%;padding:10px;margin-bottom:10px;border:1px solid #ccc;border-r
 <script src="./material/material.js"></script>
 
 <!-- HAPUS addtiket.js dari dashboard -->
+<!-- ================= POPUP EDIT SIMPLE ================= -->
+<div id="editPopup" style="
+display:none;
+position:fixed;
+top:0;left:0;
+width:100%;height:100%;
+background:rgba(0,0,0,.5);
+z-index:99999;
+justify-content:center;
+align-items:center;
+">
 
+  <div style="
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  width:400px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  ">
+
+    <h3>Edit Ticket</h3>
+
+    <input id="eCustomer" placeholder="Customer" style="padding:10px">
+    <input id="eProject" placeholder="Project" style="padding:10px">
+    <input id="eSPK" placeholder="SPK" style="padding:10px">
+    <input id="eCity" placeholder="City" style="padding:10px">
+
+    <div style="display:flex;gap:10px">
+      <button onclick="closeEdit()" style="flex:1;padding:10px;background:#dc3545;color:#fff;border:none;border-radius:6px">Cancel</button>
+      <button onclick="saveEdit()" style="flex:1;padding:10px;background:#28a745;color:#fff;border:none;border-radius:6px">Save</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let editId = null;
+
+/* OPEN POPUP */
+window.openEdit = function(id){
+
+  let data = window.syncEngine?.DB?.getTickets?.() || [];
+  let t = data.find(x => x.id === id);
+  if(!t) return;
+
+  editId = id;
+
+  document.getElementById("eCustomer").value = t.customer || "";
+  document.getElementById("eProject").value  = t.project || "";
+  document.getElementById("eSPK").value      = t.spk || "";
+  document.getElementById("eCity").value     = t.city || "";
+
+  document.getElementById("editPopup").style.display = "flex";
+};
+
+/* CLOSE */
+window.closeEdit = function(){
+  document.getElementById("editPopup").style.display = "none";
+};
+
+/* SAVE */
+window.saveEdit = function(){
+
+  let customer = eCustomer.value;
+  let project  = eProject.value;
+  let spk      = eSPK.value;
+  let city     = eCity.value;
+
+  let data = window.syncEngine.DB.getTickets();
+
+  let duplicate = data.some(t => t.id !== editId && t.spk === spk);
+  if(duplicate){
+    alert("SPK sudah dipakai!");
+    return;
+  }
+
+  window.syncEngine.updateTicket(editId, t => {
+    t.customer = customer;
+    t.project = project;
+    t.spk = spk;
+    t.city = city;
+    return t;
+  });
+
+  window.syncEngine.saveAll();
+  closeEdit();
+};
+</script>
 </body>
 </html>

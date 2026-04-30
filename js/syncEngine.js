@@ -8,50 +8,42 @@ window.SERVER_URL ||
    LOCAL DB
 ========================= */
 const DB = {
-
   getTickets() {
     try {
-      return JSON.parse(
-        localStorage.getItem("tickets") || "[]"
-      );
-    } catch {
+      return JSON.parse(localStorage.getItem("tickets") || "[]");
+    } catch (e) {
       return [];
     }
   },
 
   saveTickets(data) {
-    localStorage.setItem(
-      "tickets",
-      JSON.stringify(data || [])
-    );
+    localStorage.setItem("tickets", JSON.stringify(data || []));
   },
 
   getActiveSpk() {
     return localStorage.getItem("activeTicketId");
   }
-
 };
 
 /* =========================
-   ACTIVE TICKET
+   ACTIVE
 ========================= */
 function getActiveTicket() {
   return DB.getTickets().find(
-    t => String(t.id) === String(DB.getActiveSpk())
+    x => String(x.id) === String(DB.getActiveSpk())
   );
 }
 
 /* =========================
-   CLEAN MATERIAL
+   CLEAN DATA
 ========================= */
-function cleanBeforeSave(tickets = []) {
+function cleanBeforeSave(rows = []) {
 
-  return tickets.map(t => {
+  return rows.map(t => {
 
     let item = { ...t };
 
     if (Array.isArray(item.material)) {
-
       item.material = item.material
         .filter(m => Number(m.qty || 0) > 0)
         .map(m => ({
@@ -67,53 +59,49 @@ function cleanBeforeSave(tickets = []) {
 }
 
 /* =========================
-   SAVE SERVER
+   SAVE
 ========================= */
 async function saveAll() {
 
   try {
 
-    let tickets = DB.getTickets();
-    let cleaned = cleanBeforeSave(tickets);
+    let rows = DB.getTickets();
+    rows = cleanBeforeSave(rows);
 
-    DB.saveTickets(cleaned);
+    DB.saveTickets(rows);
 
-    const res = await fetch(
-      SERVER_URL + "/api/save",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify({
-          type: "LMS",
-          data: cleaned
-        })
-      }
-    );
-
-    if (!res.ok) throw new Error("Save gagal");
+    await fetch(`${SERVER_URL}/api/save`, {
+      method: "POST",
+      headers: {
+        "Content-Type":"application/json"
+      },
+      body: JSON.stringify({
+        type:"LMS",
+        data: rows
+      })
+    });
 
     window.dispatchEvent(
       new Event("ticketsUpdated")
     );
 
-    console.log("✔ SAVE OK");
+    return rows;
 
   } catch (err) {
     console.log("SAVE ERROR:", err);
+    return [];
   }
 }
 
 /* =========================
-   LOAD SERVER + MERGE
+   LOAD
 ========================= */
 async function loadAll() {
 
   try {
 
     const res = await fetch(
-      SERVER_URL + "/api/get?type=LMS"
+      `${SERVER_URL}/api/get?type=LMS`
     );
 
     let serverData = await res.json();
@@ -122,35 +110,15 @@ async function loadAll() {
       serverData = [];
     }
 
-    const localData = DB.getTickets();
-
-    const map = new Map();
-
-    /* local priority */
-    localData.forEach(t => {
-      map.set(String(t.id), t);
-    });
-
-    /* fill missing from server */
-    serverData.forEach(t => {
-      const id = String(t.id);
-
-      if (!map.has(id)) {
-        map.set(id, t);
-      }
-    });
-
-    const merged = Array.from(map.values());
-
-    DB.saveTickets(merged);
+    DB.saveTickets(serverData);
 
     window.dispatchEvent(
-      new Event("ticketsUpdated")
+      new CustomEvent("ticketsUpdated", {
+        detail: serverData
+      })
     );
 
-    console.log("✔ LOAD OK");
-
-    return merged;
+    return serverData;
 
   } catch (err) {
 
@@ -161,33 +129,30 @@ async function loadAll() {
 }
 
 /* =========================
-   UPDATE ONE TICKET
+   UPDATE
 ========================= */
-async function updateTicket(id, callback) {
+async function updateTicket(id, updater) {
 
-  let data = DB.getTickets();
+  let rows = DB.getTickets();
 
-  let index = data.findIndex(
+  let index = rows.findIndex(
     x => String(x.id) === String(id)
   );
 
   if (index === -1) return;
 
-  if (typeof callback === "function") {
-    data[index] = callback({
-      ...data[index]
+  if (typeof updater === "function") {
+    rows[index] = updater({
+      ...rows[index]
     });
-  } else if (
-    callback &&
-    typeof callback === "object"
-  ) {
-    data[index] = {
-      ...data[index],
-      ...callback
+  } else {
+    rows[index] = {
+      ...rows[index],
+      ...updater
     };
   }
 
-  DB.saveTickets(data);
+  DB.saveTickets(rows);
 
   await saveAll();
 }
@@ -197,56 +162,45 @@ async function updateTicket(id, callback) {
 ========================= */
 async function deleteTicket(id) {
 
-  let data = DB.getTickets().filter(
+  let rows = DB.getTickets().filter(
     x => String(x.id) !== String(id)
   );
 
-  DB.saveTickets(data);
+  DB.saveTickets(rows);
 
   await saveAll();
 }
 
 /* =========================
-   NOTE
+   SHORTCUTS
 ========================= */
 async function updateNote(id, note) {
-  await updateTicket(id, { note });
+  await updateTicket(id, { note: note });
 }
 
-/* =========================
-   STATUS
-========================= */
 async function updateStatus(id, status) {
-  await updateTicket(id, { status });
+  await updateTicket(id, { status: status });
 }
 
-/* =========================
-   MATERIAL
-========================= */
 async function updateMaterial(id, material) {
-  await updateTicket(id, { material });
+  await updateTicket(id, { material: material });
 }
 
 /* =========================
    AUTO SAVE
 ========================= */
-let syncTimer = null;
+let timer = null;
 
 function autoSave() {
 
-  clearTimeout(syncTimer);
+  clearTimeout(timer);
 
-  syncTimer = setTimeout(() => {
+  timer = setTimeout(() => {
     saveAll();
   }, 5000);
 }
 
-/* =========================
-   AUTO BACKGROUND SAVE
-========================= */
-setInterval(() => {
-  saveAll();
-}, 30000);
+setInterval(saveAll, 30000);
 
 window.addEventListener(
   "beforeunload",
@@ -258,31 +212,23 @@ window.addEventListener(
 ========================= */
 document.addEventListener(
   "DOMContentLoaded",
-  async () => {
-    await loadAll();
-  }
+  loadAll
 );
 
 /* =========================
-   GLOBAL API
+   GLOBAL
 ========================= */
 window.syncEngine = {
-
   DB,
   getActiveTicket,
-
   saveAll,
   loadAll,
-
   updateTicket,
   deleteTicket,
-
   updateNote,
   updateStatus,
   updateMaterial,
-
   autoSave
-
 };
 
 window.saveNow = saveAll;

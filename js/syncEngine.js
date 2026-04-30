@@ -200,3 +200,57 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 })();
+
+
+/* =========================
+   AUTO LOAD SAAT BUKA
+========================= */
+
+(function forceDeleteByCode(){
+
+  // 🔥 GANTI INI KODE SPK YANG MAU DIHAPUS
+  const DELETE_SPK_ID = "T139412-050226-01"; // <-- ubah ini
+
+  async function run(){
+
+    try{
+
+      let tickets = DB.getTickets();
+
+      let filtered = tickets.filter(t => t.id != DELETE_SPK_ID);
+
+      if(filtered.length === tickets.length){
+        console.log("SPK tidak ditemukan:", DELETE_SPK_ID);
+        return;
+      }
+
+      let res = await fetch(SERVER_URL + "/api/save", {
+        method: "POST",
+        headers: {
+          "Content-Type":"application/json"
+        },
+        body: JSON.stringify({
+          type: "LMS",
+          data: filtered
+        })
+      });
+
+      if(!res.ok){
+        console.log("Gagal hapus di server");
+        return;
+      }
+
+      DB.saveTickets(filtered);
+
+      console.log("SPK berhasil dihapus:", DELETE_SPK_ID);
+
+      await loadAll();
+
+    }catch(err){
+      console.log("ERROR DELETE:", err);
+    }
+  }
+
+  run();
+
+})();

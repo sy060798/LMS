@@ -1,155 +1,264 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-let currentEditId = null;
+let data = [];
+let noteTimer = {};
 
 /* =========================
-   GET DATA
+   ELEMENT
 ========================= */
-function getData(){
-  return window.syncEngine?.DB?.getTickets?.() || [];
+const body   = document.getElementById("ticketBody");
+const search = document.getElementById("searchCustomer");
+
+/* =========================
+   GET LOCAL
+========================= */
+function getLocal(){
+  return JSON.parse(localStorage.getItem("tickets") || "[]");
 }
 
 /* =========================
-   RENDER TABLE
+   REFRESH
 ========================= */
-function render(){
+function refreshData(){
+  data = getLocal();
+}
 
-  let data = getData();
-  let body = document.getElementById("ticketBody");
+/* =========================
+   SAVE NOTE
+   SAVE NOTE (DELAY)
+========================= */
+function saveNote(id,value){
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
 
-  body.innerHTML = data.map((x,i)=>`
+  tickets[idx].note = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+  clearTimeout(noteTimer[id]);
 
-    <tr>
-      <td>${i+1}</td>
-      <td><b>${x.spk}</b></td>
-      <td>${x.customer}</td>
-      <td>${x.project}</td>
-      <td>${x.tanggal}</td>
-      <td>${x.city}</td>
-      <td>${x.type}</td>
+  noteTimer[id] = setTimeout(()=>{
 
+    let tickets = getLocal();
+    let idx = tickets.findIndex(x => x.id == id);
+    if(idx === -1) return;
+
+    tickets[idx].note = value;
+    localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  },500);
+}
+
+/* =========================
+   SAVE STATUS
+========================= */
+function saveStatus(id,value){
+
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
+
+  tickets[idx].status = value;
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  loadSummary();
+}
+
+/* =========================
+   SUMMARY
+========================= */
+function loadSummary(){
+
+  refreshData();
+
+  const tot      = document.getElementById("totTicket");
+  const open     = document.getElementById("openTicket");
+  const progress = document.getElementById("progressTicket");
+  const close    = document.getElementById("closeTicket");
+  const pending  = document.getElementById("pendingTicket");
+  const mat      = document.getElementById("matCount");
+
+  if(tot) tot.textContent = data.length;
+  if(open) open.textContent = data.filter(x => x.status=="Open").length;
+  if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
+  if(close) close.textContent = data.filter(x => x.status=="Close").length;
+  if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
+  if(mat) mat.textContent = data.filter(x => x.material && x.material.length > 0).length;
+}
+
+/* =========================
+   TABLE
+========================= */
+function loadTable(filter=""){
+
+  refreshData();
+
+  let rows = data.filter(x=>{
+
+    let k = filter.toLowerCase();
+
+    return (
+      (x.customer || "").toLowerCase().includes(k) ||
+      (x.project || "").toLowerCase().includes(k) ||
+      (x.spk || "").toLowerCase().includes(k) ||
+      (x.city || "").toLowerCase().includes(k)
+    );
+
+  });
+
+  if(!body) return;
+@@ -100,149 +111,144 @@
+      <td>${x.spk || ""}</td>
+      <td>${x.tanggal || ""}</td>
+      <td>${x.city || ""}</td>
+
+      <!-- STATUS -->
       <td>
-        <select onchange="updateStatus('${x.id}',this.value)">
-          <option ${x.status=="Open"?"selected":""}>Open</option>
-          <option ${x.status=="Progress"?"selected":""}>Progress</option>
-          <option ${x.status=="Close"?"selected":""}>Close</option>
-          <option ${x.status=="Pending"?"selected":""}>Pending</option>
+        <select
+          onchange="updateStatus('${x.id}',this.value)"
+          onfocus="this.style.color='#000'"
+          onblur="if(this.value==''){this.style.color='#999'}"
+          style="
+            padding:7px 10px;
+            min-width:120px;
+            padding:8px 10px;
+            min-width:125px;
+            border-radius:10px;
+            border:1px solid #ddd;
+            color:${x.status ? '#000' : '#999'};
+            cursor:pointer;
+            background:#fff;">
+
+          <option value="">Pilih...</option>
+          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+
         </select>
       </td>
 
+      <!-- NOTE -->
       <td>
-        <input value="${x.note||""}" 
-        oninput="updateNote('${x.id}',this.value)">
+        <input
+          type="text"
+          value="${x.note || ""}"
+          placeholder="Isi note..."
+          oninput="updateNote('${x.id}',this.value)"
+          onkeyup="updateNote('${x.id}',this.value)"
+          style="
+            width:160px;
+            padding:7px 10px;
+            width:170px;
+            padding:8px 10px;
+            border:1px solid #ddd;
+            border-radius:10px;">
       </td>
 
+      <!-- AKSI -->
       <td>
-        <button onclick="openEdit('${x.id}')">✏️</button>
-        <button onclick="deleteTicket('${x.id}')">🗑️</button>
-      </td>
+        <div style="display:flex;gap:6px;justify-content:center;">
 
+          <button onclick="openMaterialById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#3498db;color:#fff;cursor:pointer;">
+            📦
+          </button>
+
+          <button onclick="editTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
+            ✏️
+          </button>
+
+          <button onclick="hapusTicketById('${x.id}')"
+            style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
+            🗑️
+          </button>
+
+        </div>
+      </td>
     </tr>
+    `;
 
-  `).join("");
+  }).join("");
 }
 
 /* =========================
-   UPDATE NOTE
+   UPDATE
 ========================= */
 window.updateNote = function(id,val){
-  window.syncEngine.updateTicket(id,t=>{
-    t.note = val;
-    return t;
-  });
+  saveNote(id,val);
 };
 
-/* =========================
-   STATUS
-========================= */
 window.updateStatus = function(id,val){
-  window.syncEngine.updateTicket(id,t=>{
-    t.status = val;
-    return t;
+  saveStatus(id,val);
+};
+
+/* =========================
+   SEARCH
+========================= */
+if(search){
+  search.addEventListener("input",function(){
+    loadTable(this.value);
   });
+}
 
-  window.syncEngine.saveAll();
+/* =========================
+   OPEN MATERIAL
+========================= */
+window.openMaterialById = function(id){
+  localStorage.setItem("activeTicketId",id);
+  window.location.href = "material/material.html";
 };
 
 /* =========================
-   OPEN EDIT POPUP
+   EDIT
 ========================= */
-window.openEdit = function(id){
+window.editTicketById = function(id){
 
-  let data = getData();
-  let x = data.find(t=>t.id===id);
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
 
-  currentEditId = id;
+  let x = tickets[idx];
 
-  document.getElementById("e_customer").value = x.customer;
-  document.getElementById("e_project").value = x.project;
-  document.getElementById("e_spk").value = x.spk;
-  document.getElementById("e_city").value = x.city;
+  x.customer = prompt("Customer",x.customer) || x.customer;
+  x.project  = prompt("Project",x.project) || x.project;
+  x.spk      = prompt("SPK",x.spk) || x.spk;
+  x.city     = prompt("City",x.city) || x.city;
 
-  document.getElementById("editPopup").style.display = "flex";
-};
+  localStorage.setItem("tickets", JSON.stringify(tickets));
 
-/* =========================
-   SAVE EDIT
-========================= */
-window.saveEdit = function(){
-
-  let data = getData();
-
-  let customer = e_customer.value;
-  let project  = e_project.value;
-  let spk      = e_spk.value;
-  let city     = e_city.value;
-
-  if(!spk) return alert("SPK wajib");
-
-  let dup = data.some(t => t.id!==currentEditId && t.spk===spk);
-
-  if(dup) return alert("SPK sudah dipakai");
-
-  window.syncEngine.updateTicket(currentEditId,t=>{
-    t.customer = customer;
-    t.project = project;
-    t.spk = spk;
-    t.city = city;
-    return t;
-  });
-
-  window.syncEngine.saveAll();
-
-  closeEdit();
-  render();
-};
-
-/* =========================
-   CLOSE POPUP
-========================= */
-window.closeEdit = function(){
-  document.getElementById("editPopup").style.display = "none";
+  loadSummary();
+  loadTable(search ? search.value : "");
 };
 
 /* =========================
    DELETE
 ========================= */
-window.deleteTicket = function(id){
-  if(!confirm("Hapus?")) return;
+window.hapusTicketById = function(id){
 
-  window.syncEngine.deleteTicket(id);
-  window.syncEngine.saveAll();
-  render();
+  if(!confirm("Hapus ticket ini?")) return;
+
+  let tickets = getLocal();
+  let idx = tickets.findIndex(x => x.id == id);
+  if(idx === -1) return;
+
+  tickets.splice(idx,1);
+
+  localStorage.setItem("tickets", JSON.stringify(tickets));
+
+  loadSummary();
+  loadTable(search ? search.value : "");
 };
-
-/* =========================
-   SYNC EVENT
-========================= */
-window.addEventListener("ticketsUpdated", render);
 
 /* =========================
    INIT
 ========================= */
-render();
+window.addEventListener("ticketsUpdated",function(){
+  loadSummary();
+  loadTable(search ? search.value : "");
+});
+
+loadSummary();
+loadTable();
 
 });

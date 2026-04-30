@@ -72,18 +72,17 @@ function loadTable(filter = "") {
 
   let data = getData();
 
-  let rows = data.filter(x => {
+ let rows = data.filter(x => {
 
-    let k = filter.toLowerCase();
+  let k = filter.toLowerCase().trim();
 
-    return (
-      (x.customer || "").toLowerCase().includes(k) ||
-      (x.project || "").toLowerCase().includes(k) ||
-      (x.spk || "").toLowerCase().includes(k) ||
-      (x.city || "").toLowerCase().includes(k)
-    );
+  // kalau kosong → tampil semua data
+  if (!k) return true;
 
-  });
+  // hanya SPK yang dicari
+  return (x.spk || "").toLowerCase().includes(k);
+
+});
 
   const body = document.getElementById("ticketBody");
   if (!body) return;

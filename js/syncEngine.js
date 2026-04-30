@@ -35,7 +35,7 @@ function showToast(msg, type = "success") {
 }
 
 /* =========================
-   LOCAL CACHE (HANYA CACHE)
+   LOCAL CACHE
 ========================= */
 const DB = {
 
@@ -110,7 +110,6 @@ async function loadAll(){
       return [];
     }
 
-    // cache lokal saja
     DB.saveTickets(data);
 
     window.dispatchEvent(new CustomEvent("ticketsUpdated", {
@@ -120,7 +119,6 @@ async function loadAll(){
     return data;
 
   }catch(err){
-
     console.log(err);
     showToast("❌ Load gagal", "error");
     return [];
@@ -128,15 +126,13 @@ async function loadAll(){
 }
 
 /* =========================
-   SAVE SERVER (FIXED - NO LOAD BEFORE SAVE)
+   SAVE SERVER
 ========================= */
 async function saveAll(){
 
   try{
 
-    // ambil dari cache lokal (biar cepat)
     let tickets = DB.getTickets();
-
     let cleaned = cleanBeforeSave(tickets);
 
     let res = await fetch(SERVER_URL + "/api/save", {
@@ -155,13 +151,11 @@ async function saveAll(){
       return;
     }
 
-    // refresh dari server setelah save
     await loadAll();
 
     showToast("✔ Data berhasil disimpan", "success");
 
   }catch(err){
-
     console.log(err);
     showToast("❌ Save gagal", "error");
   }
@@ -171,20 +165,16 @@ async function saveAll(){
    REFRESH
 ========================= */
 async function refreshNow(){
-
   await loadAll();
   showToast("✔ Data berhasil di refresh", "success");
 }
 
 /* =========================
-   BUTTON GLOBAL
+   GLOBAL EXPORT
 ========================= */
 window.saveNow = saveAll;
 window.loadNow = refreshNow;
 
-/* =========================
-   GLOBAL API
-========================= */
 window.FS = {
   DB,
   getActiveTicket,
@@ -193,64 +183,16 @@ window.FS = {
 };
 
 /* =========================
-   AUTO LOAD SAAT BUKA
+   EXPOSE GLOBAL (WAJIB)
+========================= */
+window.DB = DB;
+window.SERVER_URL = SERVER_URL;
+
+/* =========================
+   INIT
 ========================= */
 document.addEventListener("DOMContentLoaded", async () => {
   await loadAll();
 });
-
-})();
-
-
-/* =========================
-   AUTO LOAD SAAT BUKA
-========================= */
-
-(function forceDeleteByCode(){
-
-  // 🔥 GANTI INI KODE SPK YANG MAU DIHAPUS
-  const DELETE_SPK_ID = " "; // <-- ubah ini
-
-  async function run(){
-
-    try{
-
-      let tickets = DB.getTickets();
-
-      let filtered = tickets.filter(t => t.id != DELETE_SPK_ID);
-
-      if(filtered.length === tickets.length){
-        console.log("SPK tidak ditemukan:", DELETE_SPK_ID);
-        return;
-      }
-
-      let res = await fetch(SERVER_URL + "/api/save", {
-        method: "POST",
-        headers: {
-          "Content-Type":"application/json"
-        },
-        body: JSON.stringify({
-          type: "LMS",
-          data: filtered
-        })
-      });
-
-      if(!res.ok){
-        console.log("Gagal hapus di server");
-        return;
-      }
-
-      DB.saveTickets(filtered);
-
-      console.log("SPK berhasil dihapus:", DELETE_SPK_ID);
-
-      await loadAll();
-
-    }catch(err){
-      console.log("ERROR DELETE:", err);
-    }
-  }
-
-  run();
 
 })();

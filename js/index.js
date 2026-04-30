@@ -1,6 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-let data = [];
 let noteTimer = {};
 
 /* =========================
@@ -10,65 +9,51 @@ const body   = document.getElementById("ticketBody");
 const search = document.getElementById("searchCustomer");
 
 /* =========================
-   GET LOCAL
+   GET DATA (SYNC ENGINE ONLY)
 ========================= */
-function getLocal(){
-  return JSON.parse(localStorage.getItem("tickets") || "[]");
+function getData(){
+  return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   REFRESH
-========================= */
-function refreshData(){
-  data = getLocal();
-}
-
-/* =========================
-   SAVE NOTE
-   SAVE NOTE (DELAY)
+   NOTE SAVE (DEBOUNCE)
 ========================= */
 function saveNote(id,value){
-  let tickets = getLocal();
-  let idx = tickets.findIndex(x => x.id == id);
-  if(idx === -1) return;
 
-  tickets[idx].note = value;
-  localStorage.setItem("tickets", JSON.stringify(tickets));
   clearTimeout(noteTimer[id]);
 
-  noteTimer[id] = setTimeout(()=>{
+  noteTimer[id] = setTimeout(() => {
 
-    let tickets = getLocal();
-    let idx = tickets.findIndex(x => x.id == id);
-    if(idx === -1) return;
+    window.syncEngine.updateTicket(id, t => {
+      t.note = value;
+      return t;
+    });
 
-    tickets[idx].note = value;
-    localStorage.setItem("tickets", JSON.stringify(tickets));
+    window.syncEngine.saveAll();
 
-  },500);
+  }, 300);
 }
 
 /* =========================
-   SAVE STATUS
+   STATUS UPDATE
 ========================= */
-function saveStatus(id,value){
+window.updateStatus = function(id,value){
 
-  let tickets = getLocal();
-  let idx = tickets.findIndex(x => x.id == id);
-  if(idx === -1) return;
+  window.syncEngine.updateTicket(id, t => {
+    t.status = value;
+    return t;
+  });
 
-  tickets[idx].status = value;
-  localStorage.setItem("tickets", JSON.stringify(tickets));
-
+  window.syncEngine.saveAll();
   loadSummary();
-}
+};
 
 /* =========================
    SUMMARY
 ========================= */
 function loadSummary(){
 
-  refreshData();
+  let data = getData();
 
   const tot      = document.getElementById("totTicket");
   const open     = document.getElementById("openTicket");
@@ -82,17 +67,17 @@ function loadSummary(){
   if(progress) progress.textContent = data.filter(x => x.status=="Progress").length;
   if(close) close.textContent = data.filter(x => x.status=="Close").length;
   if(pending) pending.textContent = data.filter(x => x.status=="Pending").length;
-  if(mat) mat.textContent = data.filter(x => x.material && x.material.length > 0).length;
+  if(mat) mat.textContent = data.filter(x => x.material?.length > 0).length;
 }
 
 /* =========================
-   TABLE
+   TABLE RENDER
 ========================= */
 function loadTable(filter=""){
 
-  refreshData();
+  let data = getData();
 
-  let rows = data.filter(x=>{
+  let rows = data.filter(x => {
 
     let k = filter.toLowerCase();
 
@@ -106,55 +91,34 @@ function loadTable(filter=""){
   });
 
   if(!body) return;
-@@ -100,149 +111,144 @@
+
+  body.innerHTML = rows.map(x => `
+    <tr>
+
+      <td>${x.customer || ""}</td>
+      <td>${x.project || ""}</td>
       <td>${x.spk || ""}</td>
       <td>${x.tanggal || ""}</td>
       <td>${x.city || ""}</td>
 
       <!-- STATUS -->
       <td>
-        <select
-          onchange="updateStatus('${x.id}',this.value)"
-          onfocus="this.style.color='#000'"
-          onblur="if(this.value==''){this.style.color='#999'}"
-          style="
-            padding:7px 10px;
-            min-width:120px;
-            padding:8px 10px;
-            min-width:125px;
-            border-radius:10px;
-            border:1px solid #ddd;
-            color:${x.status ? '#000' : '#999'};
-            cursor:pointer;
-            background:#fff;">
-
+        <select onchange="updateStatus('${x.id}',this.value)">
           <option value="">Pilih...</option>
           <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
           <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
           <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
           <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-
         </select>
       </td>
 
       <!-- NOTE -->
       <td>
-        <input
-          type="text"
-          value="${x.note || ""}"
-          placeholder="Isi note..."
-          oninput="updateNote('${x.id}',this.value)"
-          onkeyup="updateNote('${x.id}',this.value)"
-          style="
-            width:160px;
-            padding:7px 10px;
-            width:170px;
-            padding:8px 10px;
-            border:1px solid #ddd;
-            border-radius:10px;">
+        <input value="${x.note || ""}"
+          oninput="updateNote('${x.id}',this.value)">
       </td>
 
-      <!-- AKSI -->
+      <!-- AKSI (FIXED - 📦 TIDAK HILANG) -->
       <td>
         <div style="display:flex;gap:6px;justify-content:center;">
 
@@ -175,21 +139,16 @@ function loadTable(filter=""){
 
         </div>
       </td>
-    </tr>
-    `;
 
-  }).join("");
+    </tr>
+  `).join("");
 }
 
 /* =========================
-   UPDATE
+   NOTE GLOBAL
 ========================= */
 window.updateNote = function(id,val){
   saveNote(id,val);
-};
-
-window.updateStatus = function(id,val){
-  saveStatus(id,val);
 };
 
 /* =========================
@@ -214,18 +173,24 @@ window.openMaterialById = function(id){
 ========================= */
 window.editTicketById = function(id){
 
-  let tickets = getLocal();
-  let idx = tickets.findIndex(x => x.id == id);
-  if(idx === -1) return;
+  let data = getData();
+  let t = data.find(x => x.id == id);
+  if(!t) return;
 
-  let x = tickets[idx];
+  let customer = prompt("Customer",t.customer);
+  let project  = prompt("Project",t.project);
+  let spk      = prompt("SPK",t.spk);
+  let city     = prompt("City",t.city);
 
-  x.customer = prompt("Customer",x.customer) || x.customer;
-  x.project  = prompt("Project",x.project) || x.project;
-  x.spk      = prompt("SPK",x.spk) || x.spk;
-  x.city     = prompt("City",x.city) || x.city;
+  window.syncEngine.updateTicket(id, x => {
+    x.customer = customer || x.customer;
+    x.project  = project || x.project;
+    x.spk      = spk || x.spk;
+    x.city     = city || x.city;
+    return x;
+  });
 
-  localStorage.setItem("tickets", JSON.stringify(tickets));
+  window.syncEngine.saveAll();
 
   loadSummary();
   loadTable(search ? search.value : "");
@@ -238,13 +203,10 @@ window.hapusTicketById = function(id){
 
   if(!confirm("Hapus ticket ini?")) return;
 
-  let tickets = getLocal();
-  let idx = tickets.findIndex(x => x.id == id);
-  if(idx === -1) return;
+  window.syncEngine.deleteTicket?.(id) ||
+  window.syncEngine.updateTicket(id, () => null);
 
-  tickets.splice(idx,1);
-
-  localStorage.setItem("tickets", JSON.stringify(tickets));
+  window.syncEngine.saveAll();
 
   loadSummary();
   loadTable(search ? search.value : "");
@@ -253,11 +215,6 @@ window.hapusTicketById = function(id){
 /* =========================
    INIT
 ========================= */
-window.addEventListener("ticketsUpdated",function(){
-  loadSummary();
-  loadTable(search ? search.value : "");
-});
-
 loadSummary();
 loadTable();
 

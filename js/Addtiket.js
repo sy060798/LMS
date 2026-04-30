@@ -8,14 +8,10 @@ const typeEl = document.getElementById("type");
 
 if(!form) return;
 
-/* =========================
-   DEFAULT VALUE
-========================= */
+/* DEFAULT */
 if(typeEl) typeEl.value = "Activation";
 
-/* =========================
-   SUBMIT
-========================= */
+/* SUBMIT */
 form.addEventListener("submit", function(e){
     e.preventDefault();
 
@@ -30,25 +26,22 @@ form.addEventListener("submit", function(e){
 
     const spkClean = spk.toLowerCase();
 
-    /* =========================
-       ANTI DUPLIKAT SPK
-    ========================= */
     if(data.some(t => (t.spk || "").toLowerCase() === spkClean)){
         alert("❌ SPK sudah digunakan!");
         return;
     }
 
-    /* =========================
-       DATA TICKET (NO DIHAPUS TOTAL)
-    ========================= */
     const ticket = {
-        id: spk, // SPK jadi ID utama
+        id: spk,
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
         spk: spk,
         tanggal: document.getElementById("tanggal")?.value || "",
         city: document.getElementById("city")?.value.trim() || "",
+
+        /* 🔥 TYPE BARU */
         type: typeEl?.value || "Activation",
+
         status: statusEl?.value || "Open",
         ket: document.getElementById("ket")?.value.trim() || "",
         note: "",

@@ -1,34 +1,30 @@
 (function () {
 
-const SERVER_URL = window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
+const SERVER_URL =
+window.SERVER_URL || "https://tracking-server-production-6a12.up.railway.app";
 
 /* =========================
-   TOAST NOTIFICATION
+   TOAST
 ========================= */
 function showToast(msg, type = "success") {
 
   let toast = document.createElement("div");
-
   toast.textContent = msg;
 
   toast.style.position = "fixed";
   toast.style.bottom = "20px";
   toast.style.right = "20px";
   toast.style.padding = "12px 16px";
-  toast.style.borderRadius = "8px";
+  toast.style.borderRadius = "10px";
   toast.style.color = "#fff";
   toast.style.fontSize = "14px";
-  toast.style.zIndex = "9999";
-  toast.style.boxShadow = "0 5px 15px rgba(0,0,0,0.2)";
-  toast.style.transition = "0.3s ease";
+  toast.style.zIndex = "99999";
+  toast.style.boxShadow = "0 8px 20px rgba(0,0,0,.18)";
+  toast.style.transition = "0.3s";
 
-  if (type === "success") {
-    toast.style.background = "#28a745";
-  } else if (type === "error") {
-    toast.style.background = "#dc3545";
-  } else {
-    toast.style.background = "#333";
-  }
+  if(type === "success") toast.style.background = "#28a745";
+  else if(type === "error") toast.style.background = "#dc3545";
+  else toast.style.background = "#333";
 
   document.body.appendChild(toast);
 
@@ -42,55 +38,63 @@ function showToast(msg, type = "success") {
    LOCAL DB
 ========================= */
 const DB = {
-  getTickets: () => JSON.parse(localStorage.getItem("tickets") || "[]"),
 
-  saveTickets: (data) => {
+  getTickets(){
+    return JSON.parse(localStorage.getItem("tickets") || "[]");
+  },
+
+  saveTickets(data){
     localStorage.setItem("tickets", JSON.stringify(data));
   },
 
-  getActiveSpk: () => localStorage.getItem("activeTicketId")
+  getActiveSpk(){
+    return localStorage.getItem("activeTicketId");
+  }
+
 };
 
 /* =========================
-   GET ACTIVE
+   ACTIVE TICKET
 ========================= */
 function getActiveTicket(){
-  const id = DB.getActiveSpk();
+
+  let id = DB.getActiveSpk();
   if(!id) return null;
-  return DB.getTickets().find(t => t.id == id);
+
+  return DB.getTickets().find(x => x.id == id) || null;
 }
 
 /* =========================
-   CLEAN BEFORE SAVE
+   CLEAN DATA
 ========================= */
 function cleanBeforeSave(tickets){
 
   return tickets.map(t => {
 
-    let copy = { ...t };
+    let x = { ...t };
 
-    if(Array.isArray(copy.material)){
-      copy.material = copy.material
-        .filter(m => Number(m.qty) > 0)
-        .map(m => ({
-          nama: m.nama,
-          satuan: m.satuan,
-          harga: Number(m.harga || 0),
-          qty: Number(m.qty || 0)
-        }));
+    if(Array.isArray(x.material)){
+
+      x.material = x.material
+      .filter(m => Number(m.qty) > 0)
+      .map(m => ({
+        nama: m.nama || "",
+        satuan: m.satuan || "",
+        harga: Number(m.harga || 0),
+        qty: Number(m.qty || 0)
+      }));
     }
 
-    return copy;
+    return x;
   });
-
 }
 
 /* =========================
-   SAVE ALL (MANUAL)
+   SAVE TO SERVER
 ========================= */
 async function saveAll(){
 
-  try {
+  try{
 
     let tickets = DB.getTickets();
     let cleaned = cleanBeforeSave(tickets);
@@ -99,7 +103,9 @@ async function saveAll(){
 
     let res = await fetch(SERVER_URL + "/api/save", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type":"application/json"
+      },
       body: JSON.stringify({
         type: "LMS",
         data: cleaned
@@ -107,36 +113,40 @@ async function saveAll(){
     });
 
     if(!res.ok){
-      showToast("❌ Server error saat save", "error");
+      showToast("❌ Gagal save ke server", "error");
       return;
     }
 
     showToast("✔ Data berhasil disimpan", "success");
     console.log("SAVE OK");
 
-  } catch (e) {
-    showToast("❌ Gagal sync data", "error");
-    console.log("SAVE ERROR", e);
+  }catch(err){
+
+    console.log(err);
+    showToast("❌ Server error", "error");
   }
 }
 
 /* =========================
-   LOAD ALL (MANUAL)
+   LOAD FROM SERVER
 ========================= */
 async function loadAll(){
 
-  try {
+  try{
 
     let res = await fetch(SERVER_URL + "/api/get?type=LMS");
 
     if(!res.ok){
-      showToast("❌ Gagal load server data", "error");
+      showToast("❌ Gagal ambil data", "error");
       return;
     }
 
     let serverData = await res.json();
 
-    if(!Array.isArray(serverData)) return;
+    if(!Array.isArray(serverData)){
+      showToast("❌ Format data salah", "error");
+      return;
+    }
 
     DB.saveTickets(serverData);
 
@@ -145,9 +155,10 @@ async function loadAll(){
     showToast("✔ Data berhasil di refresh", "success");
     console.log("LOAD OK");
 
-  } catch (e) {
+  }catch(err){
+
+    console.log(err);
     showToast("❌ Load gagal", "error");
-    console.log("LOAD ERROR", e);
   }
 }
 
@@ -162,13 +173,19 @@ window.loadNow = loadAll;
 ========================= */
 window.FS = {
   DB,
+  getActiveTicket,
   saveAll,
   loadAll
 };
 
 /* =========================
-   TANPA AUTO LOAD
-   TANPA AUTO SAVE
+   MANUAL MODE ONLY
+=========================
+Tidak auto save
+Tidak auto refresh
+Server = pusat data
+Klik Save = kirim server
+Klik Refresh = ambil server
 ========================= */
 
 })();

@@ -14,6 +14,15 @@ if(typeEl){
 }
 
 /* =========================
+   AUTO NUMBER (NO FIELD)
+========================= */
+function getNextNo(data){
+    if(!Array.isArray(data) || data.length === 0) return 1;
+
+    return Math.max(...data.map(t => Number(t.no || 0))) + 1;
+}
+
+/* =========================
    SUBMIT FORM
 ========================= */
 form.addEventListener("submit", function(e){
@@ -28,12 +37,21 @@ form.addEventListener("submit", function(e){
         return;
     }
 
+    /* =========================
+       ANTI DUPLIKAT SPK
+    ========================= */
     if(data.find(t => t.spk === spk)){
-        alert("SPK sudah digunakan!");
+        alert("❌ SPK sudah digunakan (duplicate)!");
         return;
     }
 
+    /* =========================
+       AUTO NO
+    ========================= */
+    const nextNo = getNextNo(data);
+
     const ticket = {
+        no: nextNo, // 🔥 AUTO NUMBER
         id: spk,
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
@@ -60,11 +78,17 @@ form.addEventListener("submit", function(e){
 
     form.reset();
 
-    const statusEl = document.getElementById("status");
-    if(statusEl) statusEl.value = "Open";
+    /* =========================
+       RESET DEFAULT VALUE
+    ========================= */
+    if(statusEl){
+        document.getElementById("status").value = "Open";
+    }
 
-    const typeReset = document.getElementById("type");
-    if(typeReset) typeReset.value = "Activation";
+    if(typeEl){
+        typeEl.value = "Activation";
+    }
+
 });
 
 });

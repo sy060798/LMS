@@ -55,48 +55,50 @@ function loadTable(filter=""){
 
   if(!body) return;
 
-  body.innerHTML = rows.slice(-50).reverse().map((x)=>{
+ body.innerHTML = rows.slice(-50).reverse().map((x, i) => {
 
-    return `
-    <tr>
+  return `
+  <tr>
 
-      <td>${x.spk || "-"}</td>
-      <td>${x.customer || ""}</td>
-      <td>${x.project || ""}</td>
-      <td>${x.spk || ""}</td>
-      <td>${x.tanggal || ""}</td>
-      <td>${x.city || ""}</td>
-      <td>${x.type || ""}</td>
+    <!-- NO URUT (UI ONLY) -->
+    <td>${i + 1}</td>
 
-      <td>
-        <select onchange="updateStatus('${x.id}',this.value)">
-          <option value="">Pilih</option>
-          <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
-          <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
-          <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
-          <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
-        </select>
-      </td>
+    <!-- SPK = ID UTAMA -->
+    <td><b>${x.spk || "-"}</b></td>
 
-      <td>
-        <input type="text"
+    <td>${x.customer || ""}</td>
+    <td>${x.project || ""}</td>
+    <td>${x.tanggal || ""}</td>
+    <td>${x.city || ""}</td>
+    <td>${x.type || ""}</td>
+
+    <td>
+      <select onchange="updateStatus('${x.id}',this.value)">
+        <option value="">Pilih</option>
+        <option value="Open" ${x.status=="Open"?"selected":""}>Open</option>
+        <option value="Progress" ${x.status=="Progress"?"selected":""}>Progress</option>
+        <option value="Close" ${x.status=="Close"?"selected":""}>Close</option>
+        <option value="Pending" ${x.status=="Pending"?"selected":""}>Pending</option>
+      </select>
+    </td>
+
+    <td>
+      <input type="text"
         value="${x.note || ""}"
         oninput="updateNote('${x.id}',this.value)">
-      </td>
+    </td>
 
-      <td>
-        <div style="display:flex;gap:6px;justify-content:center;">
-          <button onclick="openMaterialById('${x.id}')">📦</button>
-          <button onclick="editTicketById('${x.id}')">✏️</button>
-          <button onclick="hapusTicketById('${x.id}')">🗑️</button>
-        </div>
-      </td>
+    <td>
+      <div style="display:flex;gap:6px;justify-content:center;">
+        <button onclick="openMaterialById('${x.id}')">📦</button>
+        <button onclick="editTicketById('${x.id}')">✏️</button>
+        <button onclick="hapusTicketById('${x.id}')">🗑️</button>
+      </div>
+    </td>
 
-    </tr>
-    `;
-  }).join("");
-}
-
+  </tr>
+  `;
+}).join("");
 /* =========================
    NOTE (LOCAL SYNC)
 ========================= */

@@ -4,22 +4,16 @@ let noteTimer = {};
 let editId = null;
 
 /* =========================
-   ELEMENT
-========================= */
-const body   = document.getElementById("ticketBody");
-const search = document.getElementById("searchCustomer");
-
-/* =========================
-   GET DATA
+   GET DATA (ONLY FROM SYNC ENGINE)
 ========================= */
 function getData(){
   return window.syncEngine?.DB?.getTickets?.() || [];
 }
 
 /* =========================
-   NOTE SAVE
+   NOTE (DEBOUNCE SAFE → SYNC ENGINE)
 ========================= */
-function saveNote(id,value){
+window.updateNote = function(id,value){
 
   clearTimeout(noteTimer[id]);
 
@@ -33,10 +27,10 @@ function saveNote(id,value){
     window.syncEngine.saveAll();
 
   }, 300);
-}
+};
 
 /* =========================
-   STATUS
+   STATUS (SYNC ENGINE ONLY)
 ========================= */
 window.updateStatus = function(id,value){
 
@@ -91,6 +85,7 @@ function loadTable(filter=""){
 
   });
 
+  const body = document.getElementById("ticketBody");
   if(!body) return;
 
   body.innerHTML = rows.map(x => `
@@ -128,12 +123,13 @@ function loadTable(filter=""){
             📦
           </button>
 
-          <!-- ✏️ EDIT (POPUP) -->
+          <!-- EDIT -->
           <button onclick="openEdit('${x.id}')"
             style="border:none;padding:8px 10px;border-radius:10px;background:#f39c12;color:#fff;cursor:pointer;">
             ✏️
           </button>
 
+          <!-- DELETE -->
           <button onclick="hapusTicketById('${x.id}')"
             style="border:none;padding:8px 10px;border-radius:10px;background:#e74c3c;color:#fff;cursor:pointer;">
             🗑️
@@ -147,15 +143,9 @@ function loadTable(filter=""){
 }
 
 /* =========================
-   NOTE GLOBAL
-========================= */
-window.updateNote = function(id,val){
-  saveNote(id,val);
-};
-
-/* =========================
    SEARCH
 ========================= */
+const search = document.getElementById("searchCustomer");
 if(search){
   search.addEventListener("input",function(){
     loadTable(this.value);
@@ -180,14 +170,12 @@ window.openEdit = function(id){
 
   editId = id;
 
-  let popup = document.getElementById("editPopup");
-
   document.getElementById("eCustomer").value = t.customer || "";
   document.getElementById("eProject").value  = t.project || "";
   document.getElementById("eSPK").value      = t.spk || "";
   document.getElementById("eCity").value     = t.city || "";
 
-  popup.style.display = "flex";
+  document.getElementById("editPopup").style.display = "flex";
 };
 
 window.closeEdit = function(){
@@ -217,14 +205,13 @@ window.saveEdit = function(){
 };
 
 /* =========================
-   DELETE
+   DELETE (FULL SYNC SAFE)
 ========================= */
 window.hapusTicketById = function(id){
 
   if(!confirm("Hapus ticket ini?")) return;
 
-  window.syncEngine.deleteTicket?.(id) ||
-  window.syncEngine.updateTicket(id, () => null);
+  window.syncEngine.deleteTicket(id);
 
   window.syncEngine.saveAll();
 

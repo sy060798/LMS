@@ -14,18 +14,6 @@ if(!form) return;
 if(typeEl) typeEl.value = "Activation";
 
 /* =========================
-   AUTO NUMBER
-========================= */
-function getNextNo(data){
-    if(!Array.isArray(data) || data.length === 0) return 1;
-
-    return data.reduce((max, t) => {
-        const num = Number(t.no || 0);
-        return num > max ? num : max;
-    }, 0) + 1;
-}
-
-/* =========================
    SUBMIT
 ========================= */
 form.addEventListener("submit", function(e){
@@ -46,18 +34,15 @@ form.addEventListener("submit", function(e){
        ANTI DUPLIKAT SPK
     ========================= */
     if(data.some(t => (t.spk || "").toLowerCase() === spkClean)){
-        alert("❌ SPK sudah digunakan (duplicate)!");
+        alert("❌ SPK sudah digunakan!");
         return;
     }
 
     /* =========================
-       AUTO NO
+       DATA TICKET (NO DIHAPUS TOTAL)
     ========================= */
-    const nextNo = getNextNo(data);
-
     const ticket = {
-        no: nextNo,
-        id: spk,
+        id: spk, // SPK jadi ID utama
         customer: document.getElementById("customer")?.value.trim() || "",
         project: document.getElementById("project")?.value.trim() || "",
         spk: spk,
@@ -83,9 +68,6 @@ form.addEventListener("submit", function(e){
 
     form.reset();
 
-    /* =========================
-       RESET DEFAULT VALUE
-    ========================= */
     if(statusEl) statusEl.value = "Open";
     if(typeEl) typeEl.value = "Activation";
 });
